@@ -27,7 +27,15 @@ control/inc, control/src      Control algorithms (bias loop, PID, strategies)
 app/inc, app/src              Application state machine, config
 test/                         Host-side unit tests
 cmake/                        Toolchain files
+docs/                         Project documentation
+  plan/development-plan.md    Development plan (AUTHORITATIVE — update this, not .claude/plans/)
+  hardware/                   Netlists, schematics, board-level docs
 ```
+
+## Development Plan
+The authoritative specs live under `docs/plan/`. Start with `docs/plan/README.md` for index.
+Each phase has its own spec file (spec-00 through spec-05). Always update those files.
+The `.claude/plans/` copy is a session artifact only — do NOT use as source of truth.
 
 ## Key Design Patterns
 - **Strategy Pattern** for modulator types: each modulator (MZM, DPMZM, etc.)
