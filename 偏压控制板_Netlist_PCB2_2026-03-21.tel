@@ -1,0 +1,228 @@
+$PACKAGES
+0402短接点 ! '0402短接点' !  ; DE1 DE2 DE3 DE4 
+,
+        C0402 ! 100nF ±10% 16V ! 100nF ! 'https://item.szlcsc.com/datasheet/FCC0402B104K160AT/5746970.html' ,
+        ; C5 C8 C9 C10 C11 C12 C13 C14 C15 C16 C26 C29 C30 C33 C34 C37 C38 C41 ,
+        C42 C45 
+,
+        C0402 ! 10nF ±10% 50V ! 10nF ! 'https://item.szlcsc.com/datasheet/CC0402KRX7R9BB103/61185.html' ,
+        ; C17 C23 C24 
+,
+        C0402 ! 10pF ±5% 50V ! 10pF ! 'https://item.szlcsc.com/datasheet/0402CG100J500NT/1897.html' ,
+        ; C2 C3 C21 
+,
+        C0402 ! 1uF ±10% 16V ! 1uF ! 'https://item.szlcsc.com/datasheet/CGA0402X5R105K160GT/7062498.html' ,
+        ; C6 C7 C18 C22 C25 
+,
+        C0402 ! 2.2uF ±20% 6.3V ! '2.2uF' ! 'https://item.szlcsc.com/datasheet/CGA0402X5R225M6R3GT/8593414.html' ,
+        ; C1 C4 
+,
+        C0402 ! 220nF ±10% 16V ! 220nF ! 'https://item.szlcsc.com/datasheet/CL05B224KO5NNNC/17456.html' ,
+        ; C28 
+,
+        C0402 ! 4.7nF ±10% 50V ! '4.7nF' ! 'https://item.szlcsc.com/datasheet/CC0402KRX7R9BB472/107423.html' ,
+        ; C31 C32 C35 C36 C39 C40 C43 C44 
+,
+        C0603 ! 10uF ±20% 16V ! 10uF ! 'https://item.szlcsc.com/datasheet/CGA0603X5R106M160JT/7062520.html' ,
+        ; C19 C20 C27 
+,
+        CONN-SMD_4P-P1.00_MEGASTAR_ZX-SH1.0-4PWT ! 1x4P 间距:1mm 卧贴 系列:SH ! '{Value}' ! 'https://item.szlcsc.com/datasheet/ZX-SH1.0-4PWT/8430315.html' ,
+        ; U2 
+,
+        CONN-SMD_6P-P1.00_XUNPU_WAFER-SH1.0-6PWB ! 1x6P 间距:1mm 卧贴 系列:SHB ! '{Value}' ! 'https://item.szlcsc.com/datasheet/HC-SHB1.0-6PWT/56149853.html' ,
+        ; CN1 
+,
+        CONN-SMD_8P-P1.00_BX-SH1.0-8PWT ! 1x8P 间距:1mm 卧贴 系列:SH ! '{Value}' ! 'https://item.szlcsc.com/datasheet/BX-SH1.0-8PWT/19218315.html' ,
+        ; U11 U12 
+,
+        CRYSTAL-SMD_4P-L3.2-W2.5-BL ! 8.192MHz ±10ppm 10pF ! '8.192MHz' ! 'https://item.szlcsc.com/datasheet/7B008192I01/684449.html' ,
+        ; X1 
+,
+        HDR-SMD_3P-P2.54-V-F-LS4.7_R2 ! 1x3P 间距:2.54mm 立贴 ! '{Value}' ! 'https://item.szlcsc.com/datasheet/MW254S-11-03-72/20433113.html' ,
+        ; U5 
+,
+        L0402 ! 单路 0402磁珠 阻抗1kΩ@100MHz ! '{Value}' ! 'https://item.szlcsc.com/datasheet/SZ1005K102CTF/297967.html' ,
+        ; FB1 
+,
+        LED0402-RD ! YLED0402P ! '{Value}' ! 'https://item.szlcsc.com/datasheet/YLED0402P/43116910.html' ,
+        ; LED1 
+,
+        LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL ! STM32H523CET6 ! '{Value}' ! 'https://item.szlcsc.com/datasheet/STM32H523CET6/24137468.html' ,
+        ; U1 
+M3螺丝 ! {LCSC Part Name} ! '{Value}' ! '{Datasheet}' ; SCREW1 SCREW2 SCREW3 ,
+        SCREW4 
+R0402 ! 100Ω ±1% 62.5mW 厚膜电阻 ! '100Ω' ; R4 R8 
+,
+        R0402 ! 10kΩ ±1% 62.5mW 厚膜电阻 ! '10kΩ' ! 'https://item.szlcsc.com/datasheet/0402WGF1002TCE/26487.html' ,
+        ; R1 R3 
+,
+        R0402 ! 120kΩ ±0.1% 62.5mW 薄膜电阻 ! '120kΩ' ! 'https://item.szlcsc.com/datasheet/TC0250B1203TCC/533821.html' ,
+        ; R23 R26 R27 R31 R34 R35 R38 R39 
+R0402 ! 1kΩ ±1% 62.5mW 厚膜电阻 ! '1kΩ' ; R12 R13 R14 R15 
+,
+        R0402 ! 20kΩ ±1% 62.5mW 厚膜电阻 ! '20kΩ' ! 'https://atta.szlcsc.com/upload/public/pdf/source/20200306/C422600_1E6D84923E4A46A82E41ADD87F860B5C.pdf' ,
+        ; R7 
+,
+        R0402 ! 2kΩ ±1% 62.5mW 厚膜电阻 ! '2kΩ' ! 'https://atta.szlcsc.com/upload/public/pdf/source/20200306/C422600_1E6D84923E4A46A82E41ADD87F860B5C.pdf' ,
+        ; R11 
+,
+        R0402 ! 4.7kΩ ±1% 62.5mW 厚膜电阻 ! '4.7kΩ' ! 'https://item.szlcsc.com/datasheet/0402WGF4701TCE/26643.html' ,
+        ; R5 
+,
+        R0402 ! 薄膜电阻 100kΩ ±0.1% 62.5mW ! '100kΩ' ! 'https://atta.szlcsc.com/upload/public/pdf/source/20210326/C852472_6283D268A9C33EA67274729CC55E28B1.pdf' ,
+        ; R10 
+,
+        R0402 ! 薄膜电阻 12kΩ ±0.1% 62.5mW ! '12kΩ' ! 'https://item.szlcsc.com/datasheet/RT0402BRD0712KL/840642.html' ,
+        ; R16 R17 R18 R19 R41 R42 R45 R46 
+,
+        R0402 ! 薄膜电阻 30kΩ ±0.1% 62.5mW ! '30kΩ' ! 'https://item.szlcsc.com/datasheet/RT0402BRD0730KL/775873.html' ,
+        ; R24 R25 R28 R29 R32 R33 R36 R37 
+,
+        R0402 ! 薄膜电阻 3kΩ ±0.1% 62.5mW ! '3kΩ' ! 'https://item.szlcsc.com/datasheet/RT0402BRD073KL/267904.html' ,
+        ; R20 R21 R22 R30 R40 R43 R44 R47 
+,
+        R0402 ! 厚膜电阻 5kΩ ±1% 62.5mW ! '5kΩ' ! 'https://atta.szlcsc.com/upload/public/pdf/source/20200715/C477765_7B5FC8325F065A7C97D0E958BF6567D2.pdf' ,
+        ; R2 R6 R9 
+,
+        RES-ARRAY-SMD_0402-8P-L2.0-W1.0-BL ! 33Ω ±5% ! '33Ω' ! 'https://item.szlcsc.com/datasheet/4D02WGJ0330TCE/26244.html' ,
+        ; RN1 RN2 RN3 
+,
+        SOT-23-5_L2.9-W1.6-P0.95-LS2.8-BL ! OPAx140 高精度、低噪声、轨到轨输出、11MHz JFET 运算放大器 ! '{Value}' ! 'https://www.ti.com/cn/lit/gpn/opa140' ,
+        ; U4 
+,
+        SW-SMD_4P-L3.7-W3.0-P1.50-LS4.7 ! 3.65*3*2mm 立贴 轻触开关 ! '{Value}' ! 'https://item.szlcsc.com/datasheet/TS-1185EC-C-D-B/299985.html' ,
+        ; SW1 
+,
+        TSSOP-14_L4.9-W4.4-P0.65-LS6.4-BL ! OPA4197IPWR(TOKMAS) ! '{Value}' ! 'https://item.szlcsc.com/datasheet/OPA4197IPWR(TOKMAS)/50854575.html' ,
+        ; U9 U10 
+,
+        TSSOP-16_L5.0-W4.4-P0.65-LS6.4-BL ! DAC8568IDPW ! '{Value}' ! 'https://www.ti.com/cn/lit/gpn/dac8168' ,
+        ; U7 
+,
+        TSSOP-8_L4.4-W3.0-P0.65-LS6.4-BL-2 ! 差分比较器 ! '{Value}' ! 'https://www.ti.com/cn/lit/gpn/lm211' ,
+        ; U6 
+,
+        WQFN-20_L3.0-W3.0-P0.40-TL-EP1.7 ! 24 位、32kSPS、2 通道同步采样 ADC ! '{Value}' ! 'https://www.ti.com/cn/lit/gpn/ads131m02' ,
+        ; U8 
+,
+        X2SON-4_L1.0-W1.0-P0.65-TL-EP ! 具有高 PSRR 的 300mA、超低噪声、低 IQ、低压降 (LDO) 线性稳压器 ! '{Value}' ! 'http://www.ti.com/cn/lit/gpn/tps7a20' ,
+        ; U3 
+$A_PROPERTIES
+$NETS
+'-12V' ; C12.2 C13.2 U2.2 U4.2 U9.11 U10.11 
+'+12V' ; C8.2 C9.2 C10.2 C11.2 R7.2 U2.1 U4.5 U6.8 U9.4 U10.4 
+'+5V' ; C7.2 C26.1 R4.1 U2.3 U3.3 U3.4 U7.3 
+'$1N119' ; C3.2 U1.6 X1.3 
+'$1N120' ; C2.1 U1.5 X1.1 
+'$1N135' ; C4.1 U1.22 
+'$1N143' ; R1.1 U1.44 
+'$1N145' ; C1.2 U1.46 
+'$1N173' ; LED1.2 R2.2 
+'$2N101' ; C36.1 R19.1 R30.2 U10.13 
+'$2N102' ; C35.1 R18.1 R22.2 U10.2 
+'$2N131' ; C19.2 DE1.1 
+'$2N165' ; C23.1 R13.2 U8.2 
+'$2N168' ; C24.2 R14.2 U8.3 
+'$2N187' ; DE4.1 R6.1 R9.2 
+'$2N19' ; C23.2 R12.2 U8.1 
+'$2N196' ; R7.1 R11.2 U6.3 
+'$2N198' ; R5.1 R8.1 U6.7 
+'$2N203' ; DE3.2 R5.2 
+'$2N26' ; C28.2 U8.16 
+'$2N36' ; C24.1 R15.2 U8.4 
+'$2N43' ; C31.1 R16.1 R20.2 U9.2 
+'$2N45' ; R23.2 R24.2 U9.3 
+'$2N52' ; R31.2 R32.2 U9.5 
+'$2N55' ; C39.1 R40.2 R41.1 U9.6 
+'$2N64' ; C40.1 R42.1 R43.2 U9.9 
+'$2N69' ; R25.2 R26.2 U9.12 
+'$2N70' ; R33.2 R34.2 U9.10 
+'$2N72' ; C32.1 R17.1 R21.2 U9.13 
+'$2N8' ; C21.1 DE2.1 R10.2 U4.1 
+'$2N84' ; C44.1 R46.1 R47.2 U10.9 
+'$2N85' ; C43.1 R44.2 R45.1 U10.6 
+'$2N9' ; C21.2 DE1.2 R10.1 U4.4 
+'$2N95' ; R37.2 R39.2 U10.10 
+'$2N96' ; R27.2 R28.2 U10.3 
+'$2N97' ; R35.2 R36.2 U10.5 
+'$2N98' ; R29.2 R38.2 U10.12 
+'ADC_CLKIN' ; RN2.7 U8.15 
+'ADC_CS' ; RN3.6 U8.10 
+'ADC_DRDY' ; RN3.7 U8.11 
+'ADC_MISO' ; RN2.5 U8.13 
+'ADC_MOSI' ; RN2.6 U8.14 
+'ADC_SCLK' ; RN3.8 U8.12 
+'ADC_SYNC' ; RN3.5 U8.9 
+'DAC_CLK' ; RN1.8 U7.16 
+'DAC_CLR' ; RN2.8 U7.9 
+'DAC_DIN' ; RN1.7 U7.15 
+'DAC_LDAC' ; RN1.5 U7.1 
+'DAC_SYNC' ; RN1.6 U7.2 
+'PD-' ; C20.2 R4.2 U5.3 
+'PD+' ; C19.1 R6.2 U5.2 
+'PWM_OUT' ; R8.2 U12.8 
+ADCCS ; RN3.3 U1.25 
+AIN0P ; DE2.2 R12.1 
+AIN1P ; DE4.2 R15.1 
+CLK1 ; RN1.1 U1.15 
+CLKIN2 ; RN2.2 U1.29 
+CLR1 ; RN2.1 U1.18 
+DIN1 ; RN1.2 U1.17 
+DRDY2 ; RN3.2 U1.32 
+GND ; C1.1 C2.2 C3.1 C4.2 C5.2 C6.1 C7.1 C8.1 C9.1 C10.1 C11.1 C12.1 C13.1 ,
+        C14.1 C15.1 C16.1 C17.1 C18.1 C20.1 C22.2 C25.1 C26.2 C27.2 C28.1 ,
+        C29.2 C30.1 C33.1 C34.1 C37.1 C38.1 C41.1 C42.1 C45.1 CN1.6 CN1.7 ,
+        CN1.8 LED1.1 R1.2 R9.1 R11.1 R13.1 R14.1 R23.1 R26.1 R27.1 R31.1 R34.1 ,
+        R35.1 R38.1 R39.1 SCREW1.1 SCREW2.1 SCREW3.1 SCREW4.1 SW1.2 U1.8 U1.23 ,
+        U1.35 U1.47 U2.4 U2.5 U2.6 U3.2 U3.5 U4.3 U5.1 U6.1 U6.4 U7.14 U8.17 ,
+        U8.20 U8.21 U11.9 U11.10 U12.1 U12.2 U12.3 U12.4 U12.5 U12.6 U12.7 ,
+        U12.9 U12.10 X1.2 X1.4 
+LDAC1 ; RN1.4 U1.20 
+LED ; R2.1 U1.2 
+MISO2 ; RN2.4 U1.27 
+MOSI2 ; RN2.3 U1.28 
+NRST ; C5.1 R3.1 SW1.1 U1.7 
+PA0 ; U1.10 U6.2 
+PA1 ; U1.11 
+PA10 ; CN1.5 U1.31 
+PA12 ; RN3.4 U1.33 
+PA15 ; U1.38 
+PA2 ; U1.12 
+PA3 ; U1.13 
+PA4 ; U1.14 
+PA6 ; U1.16 
+PA9 ; CN1.4 U1.30 
+PB1 ; RN1.3 U1.19 
+PB10 ; U1.21 
+PB13 ; RN3.1 U1.26 
+PB3 ; U1.39 
+PB4 ; U1.40 
+PB5 ; U1.41 
+PB6 ; U1.42 
+PB7 ; U1.43 
+PB8 ; U1.45 
+SWCLK ; CN1.3 U1.37 
+SWDIO ; CN1.2 U1.34 
+VA ; C31.2 R16.2 U9.1 U11.8 
+VB ; C35.2 R18.2 U10.1 U11.7 
+VC ; C32.2 R17.2 U9.14 U11.6 
+VD ; C36.2 R19.2 U10.14 U11.5 
+VDD33 ; C6.2 C14.2 C15.2 C16.2 C25.2 CN1.1 FB1.1 R3.2 U1.1 U1.24 U1.36 U1.48 ,
+        U3.1 U8.18 
+VDD33A ; C17.2 C18.2 C22.1 FB1.2 U1.9 U8.19 
+VE ; C40.2 R42.2 U9.8 U11.4 
+VF ; C44.2 R46.2 U10.8 U11.3 
+VG ; C39.2 R41.2 U9.7 U11.2 
+VH ; C43.2 DE3.1 R45.2 U10.7 U11.1 
+VOA ; R24.1 U7.4 
+VOB ; R28.1 U7.13 
+VOC ; R25.1 U7.5 
+VOD ; R29.1 U7.12 
+VOE ; R33.1 U7.6 
+VOF ; R37.1 U7.11 
+VOG ; R32.1 U7.7 
+VOH ; R36.1 U7.10 
+VREF ; C27.1 C29.1 C30.2 C33.2 C34.2 C37.2 C38.2 C41.2 C42.2 C45.2 R20.1 R21.1 ,
+        R22.1 R30.1 R40.1 R43.1 R44.1 R47.1 U7.8 
+$SCHEDULE
+$END

@@ -1,0 +1,37 @@
+# Build output
+build/
+build-test/
+
+# Test binaries
+test/test_goertzel
+test/test_pid
+
+# CubeMX generated (keep .ioc for reproducibility, ignore generated code)
+cubemx/Core/
+cubemx/Drivers/
+cubemx/Middlewares/
+cubemx/startup_*.s
+cubemx/STM32H523xx_FLASH.ld
+cubemx/STM32H523xx_RAM.ld
+cubemx/.mxproject
+cubemx/*.xml
+cubemx/Makefile
+cubemx/CMakeLists.txt
+cubemx/CMakePresets.json
+cubemx/cmake/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled objects
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
