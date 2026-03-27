@@ -1,14 +1,32 @@
 #include "drv_board.h"
+#include "main.h"
+#include "spi.h"
+#include "usart.h"
+#include "stm32h5xx_hal.h"
+
+#include <stdio.h>
+#include <string.h>
 
 /*
  * Board-level initialization and utility functions.
  *
- * NOTE: The actual HAL calls (HAL_GPIO_WritePin, etc.) are commented out
- * until CubeMX generates the HAL layer. The logic and structure are complete;
- * just uncomment HAL calls and include the HAL header when ready.
+ * All GPIO pins are initialized by CubeMX in MX_GPIO_Init().
+ * This module provides a thin abstraction layer over HAL_GPIO calls,
+ * using the pin/port macros defined in main.h (CubeMX generated).
  */
 
-/* TODO: #include "stm32h5xx_hal.h" */
+/* ========================================================================= */
+/*  USART printf redirect                                                    */
+/* ========================================================================= */
+
+/* Redirect printf to USART1 via DMA */
+int _write(int fd, char *ptr, int len)
+{
+    (void)fd;
+    /* Use blocking transmit for printf (safe from any context, simple) */
+    HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
+    return len;
+}
 
 /* ========================================================================= */
 /*  Board init — called once at startup                                      */
@@ -17,25 +35,23 @@
 void board_init(void)
 {
     /*
-     * CubeMX will generate:
-     *   - HAL_Init()
-     *   - SystemClock_Config() — HSE 8.192MHz → PLL → 250MHz
-     *   - MX_GPIO_Init()
-     *   - MX_SPI1_Init()  — DAC8568
-     *   - MX_SPI2_Init()  — ADS131M02
-     *   - MX_USART1_UART_Init() — Debug
-     *   - MX_GPDMA1_Init() — GPDMA1 Ch0-4 (SPI1_TX, SPI2_TX/RX, USART1_TX/RX)
-     *   - MCO1 config      — PA8 outputs HSE 8.192MHz for ADC CLKIN
+     * CubeMX main.c already calls:
+     *   HAL_Init(), SystemClock_Config(), MX_GPIO_Init(), MX_GPDMA1_Init(),
+     *   MX_SPI1_Init(), MX_SPI2_Init(), MX_TIM6_Init(), MX_USART1_UART_Init()
      *
-     * This function is a placeholder that will call those generated inits.
+     * This function ensures default pin states after CubeMX init.
      */
 
-    /* Set default pin states */
+    /* Ensure default pin states (CubeMX already sets initial levels,
+     * but be explicit for safety) */
     board_dac_cs_high();          /* DAC deselected */
-    board_dac_clr_release();      /* DAC CLR inactive */
+    board_dac_clr_release();      /* DAC CLR inactive (high) */
     board_adc_cs_high();          /* ADC deselected */
-    board_adc_sync_rst_release(); /* ADC /SYNC/RESET inactive */
+    board_adc_sync_rst_release(); /* ADC /SYNC/RESET inactive (high) */
     board_led_off();
+
+    printf("[board] init ok, SYSCLK=%lu MHz\r\n",
+           HAL_RCC_GetSysClockFreq() / 1000000UL);
 }
 
 /* ========================================================================= */
@@ -44,17 +60,17 @@ void board_init(void)
 
 void board_led_on(void)
 {
-    /* HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 }
 
 void board_led_off(void)
 {
-    /* HAL_GPIO_WritePin(LED_PORT, LED_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
 }
 
 void board_led_toggle(void)
 {
-    /* HAL_GPIO_TogglePin(LED_PORT, LED_PIN); */
+    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 }
 
 /* ========================================================================= */
@@ -63,8 +79,7 @@ void board_led_toggle(void)
 
 void board_delay_ms(uint32_t ms)
 {
-    /* HAL_Delay(ms); */
-    (void)ms;
+    HAL_Delay(ms);
 }
 
 /* ========================================================================= */
@@ -73,30 +88,30 @@ void board_delay_ms(uint32_t ms)
 
 void board_dac_cs_low(void)
 {
-    /* HAL_GPIO_WritePin(DAC_SYNC_PORT, DAC_SYNC_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(DAC_SYNC_GPIO_Port, DAC_SYNC_Pin, GPIO_PIN_RESET);
 }
 
 void board_dac_cs_high(void)
 {
-    /* HAL_GPIO_WritePin(DAC_SYNC_PORT, DAC_SYNC_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(DAC_SYNC_GPIO_Port, DAC_SYNC_Pin, GPIO_PIN_SET);
 }
 
 void board_dac_ldac_pulse(void)
 {
-    /* HAL_GPIO_WritePin(DAC_LDAC_PORT, DAC_LDAC_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(DAC_LDAC_GPIO_Port, DAC_LDAC_Pin, GPIO_PIN_RESET);
     /* Brief delay — LDAC minimum pulse width is 20ns, a few NOPs suffice */
     __asm volatile("nop\nnop\nnop\nnop");
-    /* HAL_GPIO_WritePin(DAC_LDAC_PORT, DAC_LDAC_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(DAC_LDAC_GPIO_Port, DAC_LDAC_Pin, GPIO_PIN_SET);
 }
 
 void board_dac_clr_assert(void)
 {
-    /* HAL_GPIO_WritePin(DAC_CLR_PORT, DAC_CLR_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(DAC_CLR_GPIO_Port, DAC_CLR_Pin, GPIO_PIN_RESET);
 }
 
 void board_dac_clr_release(void)
 {
-    /* HAL_GPIO_WritePin(DAC_CLR_PORT, DAC_CLR_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(DAC_CLR_GPIO_Port, DAC_CLR_Pin, GPIO_PIN_SET);
 }
 
 /* ========================================================================= */
@@ -105,28 +120,27 @@ void board_dac_clr_release(void)
 
 void board_adc_cs_low(void)
 {
-    /* HAL_GPIO_WritePin(ADC_CS_PORT, ADC_CS_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, GPIO_PIN_RESET);
 }
 
 void board_adc_cs_high(void)
 {
-    /* HAL_GPIO_WritePin(ADC_CS_PORT, ADC_CS_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, GPIO_PIN_SET);
 }
 
 uint8_t board_adc_drdy_read(void)
 {
-    /* return (uint8_t)HAL_GPIO_ReadPin(ADC_DRDY_PORT, ADC_DRDY_PIN); */
-    return 1; /* placeholder: 1 = not ready, 0 = data ready */
+    return (uint8_t)HAL_GPIO_ReadPin(ADC_DRDY_GPIO_Port, ADC_DRDY_Pin);
 }
 
 void board_adc_sync_rst_assert(void)
 {
-    /* HAL_GPIO_WritePin(ADC_SYNC_RST_PORT, ADC_SYNC_RST_PIN, GPIO_PIN_RESET); */
+    HAL_GPIO_WritePin(ADC_SYNC_RST_GPIO_Port, ADC_SYNC_RST_Pin, GPIO_PIN_RESET);
 }
 
 void board_adc_sync_rst_release(void)
 {
-    /* HAL_GPIO_WritePin(ADC_SYNC_RST_PORT, ADC_SYNC_RST_PIN, GPIO_PIN_SET); */
+    HAL_GPIO_WritePin(ADC_SYNC_RST_GPIO_Port, ADC_SYNC_RST_Pin, GPIO_PIN_SET);
 }
 
 /* ========================================================================= */

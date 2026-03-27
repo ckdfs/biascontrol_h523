@@ -1,5 +1,8 @@
 #include "drv_dac8568.h"
 #include "drv_board.h"
+#include "main.h"
+#include "spi.h"
+#include "stm32h5xx_hal.h"
 
 /*
  * DAC8568 driver implementation.
@@ -12,12 +15,27 @@
  *   [3:0]   Feature = command-dependent
  *
  * SYNC (CS) active low: pull low before SPI transfer, release after.
- * SCLK idle high (CPOL=1), data latched on falling edge (CPHA=0 → SPI Mode 2).
- * Actually DAC8568 uses CPOL=0, CPHA=1 (SPI Mode 1) per datasheet — verify.
+ * SPI Mode 1: CPOL=0, CPHA=1 (data latched on falling edge of SCLK).
  */
 
-/* TODO: #include "stm32h5xx_hal.h" */
-/* TODO: extern SPI_HandleTypeDef hspi1; */
+/* SPI TX complete flag for DMA transfers */
+static volatile bool spi1_tx_done = true;
+
+/* ========================================================================= */
+/*  HAL callbacks                                                            */
+/* ========================================================================= */
+
+/**
+ * SPI1 TX DMA complete callback.
+ * Called by HAL from GPDMA1_Channel0 ISR.
+ */
+void HAL_SPI_TxCpltCallback_DAC(SPI_HandleTypeDef *hspi)
+{
+    if (hspi == &hspi1) {
+        board_dac_cs_high();
+        spi1_tx_done = true;
+    }
+}
 
 /* ========================================================================= */
 /*  Internal helpers                                                         */
@@ -45,19 +63,39 @@ static uint32_t dac8568_build_frame(uint8_t prefix, uint8_t control,
 
 int dac8568_send_raw(uint32_t frame)
 {
+    /* Wait for any previous DMA transfer to finish */
+    while (!spi1_tx_done) {
+        /* In ISR context this would deadlock — but dac8568_send_raw
+         * should only be called from thread context during init/control loop */
+    }
+
     /* Convert to big-endian byte array for SPI transmission */
-    uint8_t tx[4];
+    static uint8_t tx[4]; /* static so DMA can read after function returns */
     tx[0] = (uint8_t)(frame >> 24);
     tx[1] = (uint8_t)(frame >> 16);
     tx[2] = (uint8_t)(frame >> 8);
     tx[3] = (uint8_t)(frame);
 
+    spi1_tx_done = false;
     board_dac_cs_low();
 
-    /* TODO: HAL_SPI_Transmit(&hspi1, tx, 4, HAL_MAX_DELAY); */
-    (void)tx;
+    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, tx, 4);
+    if (status != HAL_OK) {
+        board_dac_cs_high();
+        spi1_tx_done = true;
+        return -1;
+    }
 
-    board_dac_cs_high();
+    /* For init/config calls, wait for completion (blocking) */
+    uint32_t timeout = HAL_GetTick() + 10;
+    while (!spi1_tx_done) {
+        if (HAL_GetTick() > timeout) {
+            board_dac_cs_high();
+            spi1_tx_done = true;
+            return -2; /* timeout */
+        }
+    }
+
     return 0;
 }
 
@@ -85,7 +123,7 @@ int dac8568_init(void)
     board_delay_ms(1);
 
     /* Set all channels to mid-scale (0V output after subtractor) */
-    /* Mid-scale DAC code: V_dac = (0 - (-10)) / 4 = 2.5V → code = 2.5/5.0 * 65535 = 32767 */
+    /* Mid-scale: V_dac = (0 - (-10)) / 4 = 2.5V → code = 2.5/5.0 * 65535 ≈ 32768 */
     uint16_t mid_scale = 32768;
     for (uint8_t ch = 0; ch < 8; ch++) {
         ret = dac8568_write_channel(ch, mid_scale);

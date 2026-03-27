@@ -20,35 +20,40 @@
 ## Task Checklist
 
 ### 1. Fix `drv_board.h` Pin Definitions
-- [ ] LED: PA2 → PC13
-- [ ] DAC_LDAC: PB0 → PB2
-- [ ] DAC_CLR: PA8 → PB0
-- [ ] ADC_CLKIN: PB9 → PA8 (now MCO1, no GPIO needed)
-- [ ] ADC_CS: PA12 → PB12
-- [ ] ADC_DRDY: PB12 → PA11, EXTI12 → EXTI11
-- [ ] Add: ADC_SYNC_RST → PA12
+- [x] LED: PA2 → PC13
+- [x] DAC_LDAC: PB0 → PB2
+- [x] DAC_CLR: PA8 → PB0
+- [x] ADC_CLKIN: PB9 → PA8 (MCO1, no GPIO needed)
+- [x] ADC_CS: PA12 → PB12
+- [x] ADC_DRDY: PB12 → PA11, EXTI12 → EXTI11
+- [x] Add: ADC_SYNC_RST → PA12
 
 ### 2. DAC8568 Driver (`drv_dac8568.c`)
-- [ ] `dac8568_init()`: internal ref enable, LDAC mode
-- [ ] `dac8568_write_channel(ch, value)`: 32-bit SPI frame via DMA
-- [ ] `dac8568_write_voltage(ch, voltage_v)`: float → 16-bit conversion
-- [ ] Verify: write 0x8000 → measure 2.5V on VOA with multimeter
-- [ ] Verify: full range 0~5V on all 8 channels
-- [ ] Verify: subtractor output -10V~+10V
+- [x] `dac8568_init()`: internal ref enable, LDAC mode
+- [x] `dac8568_write_channel(ch, value)`: 32-bit SPI frame via DMA (SPI1/GPDMA1 Ch0)
+- [x] `dac8568_write_voltage(ch, voltage_v)`: float → 16-bit conversion
+- [x] HAL_SPI_TxCpltCallback → CS deassert dispatched from stm32h5xx_it.c
+- [ ] Verify: write 0x8000 → measure 2.5V on VOA  **[needs board]**
+- [ ] Verify: full range 0~5V on all 8 channels  **[needs board]**
+- [ ] Verify: subtractor output -10V~+10V  **[needs board]**
 
 ### 3. ADS131M02 Driver (`drv_ads131m02.c`)
-- [ ] `ads131m02_init()`: reset sequence, read ID register (expect 0x02)
-- [ ] `ads131m02_read_reg()` / `ads131m02_write_reg()`: SPI command words
-- [ ] Configure: gain=1, OSR=4096 (or 256 for 32kSPS), global-chop=on
-- [ ] `ads131m02_read_data()`: SPI2 DMA full-duplex, parse 24-bit signed
-- [ ] Verify: connect known voltage (e.g., 1.0V ref), check ADC reading
-- [ ] Verify: both CH0 and CH1 read correctly
+- [x] `ads131m02_init()`: reset sequence via PA12, ID verify, CLOCK+GAIN config
+- [x] `ads131m02_read_reg()` / `ads131m02_write_reg()`: blocking SPI2 command words
+- [x] Configure: gain=1, OSR=4096, global-chop=on
+- [x] `ads131m02_drdy_isr_handler()`: DMA full-duplex read on DRDY falling edge
+- [x] `HAL_SPI_TxRxCpltCallback` → 24-bit parse → user callback
+- [x] DRDY EXTI11 dispatched from HAL_GPIO_EXTI_Falling_Callback in stm32h5xx_it.c
+- [ ] Verify: connect known voltage, check ADC reading  **[needs board]**
+- [ ] Verify: both CH0 and CH1 read correctly  **[needs board]**
 
 ### 4. USART1 Debug Interface
-- [ ] `_write()` syscall redirect → `HAL_UART_Transmit_DMA()`
-- [ ] `HAL_UARTEx_ReceiveToIdle_DMA()` for variable-length RX
-- [ ] Verify: `printf("Hello\n")` appears on serial terminal
-- [ ] Verify: send command from PC, receive in callback
+- [x] `_write()` syscall redirect → `HAL_UART_Transmit()` (blocking, in drv_board.c)
+- [x] `HAL_UARTEx_ReceiveToIdle_DMA()` for variable-length RX (app_uart.c)
+- [x] `HAL_UARTEx_RxEventCallback` → line accumulator → `app_handle_command()`
+- [x] `status` command prints state, bias voltage, lock status via printf
+- [ ] Verify: `printf("Hello\n")` appears on serial terminal  **[needs board]**
+- [ ] Verify: send command from PC, receive in callback  **[needs board]**
 
 ### 5. Full-Chain Verification
 - [ ] DAC Ch0 → subtractor → multimeter: set voltage, verify linearity

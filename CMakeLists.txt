@@ -77,6 +77,9 @@ add_executable(${PROJECT_NAME}.elf
     ${APP_SRC}
 )
 
+# Link math library (must come after object files in link order)
+target_link_libraries(${PROJECT_NAME}.elf m)
+
 target_include_directories(${PROJECT_NAME}.elf PRIVATE
     # CubeMX generated headers
     ${CUBEMX_DIR}/Core/Inc

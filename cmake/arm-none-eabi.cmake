@@ -35,7 +35,7 @@ set(MCU_FLAGS "-mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16")
 
 set(CMAKE_C_FLAGS_INIT   "${MCU_FLAGS}")
 set(CMAKE_ASM_FLAGS_INIT "${MCU_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "${MCU_FLAGS} --specs=nano.specs -lm -lnosys")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "${MCU_FLAGS} --specs=nano.specs -lnosys")
 
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

@@ -1,8 +1,10 @@
 #include "app_main.h"
+#include "app_uart.h"
 #include "drv_board.h"
 #include "drv_dac8568.h"
 #include "drv_ads131m02.h"
 #include <string.h>
+#include <stdio.h>
 
 /* ========================================================================= */
 /*  Application context (singleton)                                          */
@@ -73,6 +75,9 @@ static void state_init(void)
 {
     /* Initialize board hardware */
     board_init();
+
+    /* Start USART1 DMA receive — must come after MX_USART1_UART_Init() */
+    app_uart_init();
 
     /* Load or set default configuration */
     app_config_load();
@@ -196,8 +201,8 @@ void app_init(void)
 
 void app_run(void)
 {
-    /* Update tick (placeholder — will use HAL_GetTick() on hardware) */
-    /* ctx.tick_ms = HAL_GetTick(); */
+    /* Update tick from HAL systick */
+    ctx.tick_ms = HAL_GetTick();
 
     switch (ctx.state) {
     case APP_STATE_INIT:
@@ -251,10 +256,9 @@ void app_handle_command(const char *cmd)
         ads131m02_stop_continuous();
         transition_to(APP_STATE_IDLE);
     } else if (strcmp(cmd, "status") == 0) {
-        /* TODO: Print state, harmonics, bias voltage via UART */
-        /* printf("State: %s\n", app_state_name(ctx.state)); */
-        /* printf("Bias: %.3f V\n", bias_ctrl_get_bias_voltage(&ctx.bias_ctrl)); */
-        /* printf("Locked: %s\n", bias_ctrl_is_locked(&ctx.bias_ctrl) ? "YES" : "NO"); */
+        printf("State: %s\r\n", app_state_name(ctx.state));
+        printf("Bias:  %.3f V\r\n", (double)bias_ctrl_get_bias_voltage(&ctx.bias_ctrl));
+        printf("Lock:  %s\r\n", bias_ctrl_is_locked(&ctx.bias_ctrl) ? "YES" : "NO");
     } else if (strncmp(cmd, "set bp ", 7) == 0) {
         const char *bp = cmd + 7;
         if (strcmp(bp, "quad") == 0) {

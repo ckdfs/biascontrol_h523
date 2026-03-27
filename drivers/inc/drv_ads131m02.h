@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "stm32h5xx_hal.h"
 
 /**
  * ADS131M02 - 24-bit, 2-channel, simultaneous-sampling delta-sigma ADC
@@ -172,5 +173,17 @@ float ads131m02_code_to_voltage(int32_t code, uint8_t gain);
  * @return 0 on success
  */
 int ads131m02_spi_transfer(const uint32_t tx[4], uint32_t rx[4]);
+
+/**
+ * DRDY ISR handler — called from EXTI11 falling edge callback.
+ * Starts a DMA read of the ADC frame.
+ */
+void ads131m02_drdy_isr_handler(void);
+
+/**
+ * SPI2 TX/RX DMA complete callback dispatcher.
+ * Called from HAL_SPI_TxRxCpltCallback when hspi == &hspi2.
+ */
+void HAL_SPI_TxRxCpltCallback_ADC(SPI_HandleTypeDef *hspi);
 
 #endif /* DRV_ADS131M02_H */

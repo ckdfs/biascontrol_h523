@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "stm32h5xx_hal.h"
 
 /**
  * DAC8568 - 16-bit, 8-channel, SPI DAC
@@ -99,5 +100,11 @@ int dac8568_set_voltage(uint8_t channel, float voltage_v);
  * Low-level function used by all other functions.
  */
 int dac8568_send_raw(uint32_t frame);
+
+/**
+ * SPI1 TX DMA complete callback dispatcher.
+ * Called from HAL_SPI_TxCpltCallback when hspi == &hspi1.
+ */
+void HAL_SPI_TxCpltCallback_DAC(SPI_HandleTypeDef *hspi);
 
 #endif /* DRV_DAC8568_H */
