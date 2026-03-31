@@ -88,16 +88,16 @@ static void state_init(void)
 
 static void state_selftest(void)
 {
-    /* Initialize DAC8568 */
+    /* Initialize DAC8568 — non-fatal if chip is not yet soldered */
     int ret = dac8568_init();
     if (ret != 0) {
-        transition_to(APP_STATE_FAULT);
-        return;
+        printf("[app] WARNING: DAC8568 init failed (%d), continuing without DAC\r\n", ret);
     }
 
-    /* Initialize ADS131M02 */
+    /* Initialize ADS131M02 — fatal if ADC fails */
     ret = ads131m02_init();
     if (ret != 0) {
+        printf("[app] FAULT: ADS131M02 init failed (%d)\r\n", ret);
         transition_to(APP_STATE_FAULT);
         return;
     }
@@ -183,9 +183,9 @@ static void state_fault(void)
     } else {
         board_led_off();
     }
-
-    /* Set DAC outputs to safe state (0V = mid-scale) */
-    dac8568_write_channel(DAC8568_CH_ALL, 32768);
+    /* DAC safe-state write intentionally omitted here —
+     * dac8568_write_channel() in a tight fault loop would block
+     * if the DMA link is not established. */
 }
 
 /* ========================================================================= */
@@ -203,6 +203,9 @@ void app_run(void)
 {
     /* Update tick from HAL systick */
     ctx.tick_ms = HAL_GetTick();
+
+    /* Dispatch any pending UART command (must run in main-loop context, not ISR) */
+    app_uart_process();
 
     switch (ctx.state) {
     case APP_STATE_INIT:
@@ -269,6 +272,22 @@ void app_handle_command(const char *cmd)
             ctx.config->target_point = BIAS_POINT_MIN;
         }
         bias_ctrl_set_target(&ctx.bias_ctrl, ctx.config->target_point);
+    } else if (strcmp(cmd, "adc") == 0) {
+        /* Take 8 blocking ADC samples and print raw codes + voltages.
+         * Useful for verifying the ADS131M02 signal chain without DAC. */
+        printf("ADC samples (blocking, 8x):\r\n");
+        for (int i = 0; i < 8; i++) {
+            ads131m02_sample_t s;
+            if (ads131m02_read_sample(&s) == 0) {
+                float v0 = ads131m02_code_to_voltage(s.ch0, ADS131M02_GAIN_1);
+                float v1 = ads131m02_code_to_voltage(s.ch1, ADS131M02_GAIN_1);
+                printf("  [%d] CH0=%8ld (%+.4fV)  CH1=%8ld (%+.4fV)\r\n",
+                       i, (long)s.ch0, (double)v0, (long)s.ch1, (double)v1);
+            } else {
+                printf("  [%d] SPI error\r\n", i);
+            }
+            board_delay_ms(5);
+        }
     } else if (strncmp(cmd, "set mod ", 8) == 0) {
         const char *mod = cmd + 8;
         if (strcmp(mod, "mzm") == 0) {

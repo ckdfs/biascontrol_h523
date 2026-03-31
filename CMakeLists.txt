@@ -77,8 +77,9 @@ add_executable(${PROJECT_NAME}.elf
     ${APP_SRC}
 )
 
-# Link math library (must come after object files in link order)
+# Link math library; enable float support in newlib-nano printf/scanf
 target_link_libraries(${PROJECT_NAME}.elf m)
+target_link_options(${PROJECT_NAME}.elf PRIVATE -u _printf_float)
 
 target_include_directories(${PROJECT_NAME}.elf PRIVATE
     # CubeMX generated headers

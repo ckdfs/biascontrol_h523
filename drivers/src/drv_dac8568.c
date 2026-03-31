@@ -76,27 +76,36 @@ int dac8568_send_raw(uint32_t frame)
     tx[2] = (uint8_t)(frame >> 8);
     tx[3] = (uint8_t)(frame);
 
-    spi1_tx_done = false;
     board_dac_cs_low();
 
+    /* Try DMA path first; fall back to blocking if DMA not ready (e.g. not linked yet). */
+    spi1_tx_done = false;
     HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, tx, 4);
-    if (status != HAL_OK) {
-        board_dac_cs_high();
-        spi1_tx_done = true;
-        return -1;
-    }
 
-    /* For init/config calls, wait for completion (blocking) */
-    uint32_t timeout = HAL_GetTick() + 10;
-    while (!spi1_tx_done) {
-        if (HAL_GetTick() > timeout) {
-            board_dac_cs_high();
-            spi1_tx_done = true;
-            return -2; /* timeout */
+    if (status == HAL_OK) {
+        /* Wait up to 10 ms for DMA TX-complete callback */
+        uint32_t deadline = HAL_GetTick() + 10;
+        while (!spi1_tx_done) {
+            if (HAL_GetTick() > deadline) {
+                /* DMA callback never fired — GPDMA link may be missing.
+                 * Fall through to blocking transfer below. */
+                spi1_tx_done = true;
+                HAL_SPI_Abort(&hspi1);
+                status = HAL_TIMEOUT;
+                break;
+            }
         }
     }
 
-    return 0;
+    if (status != HAL_OK) {
+        /* DMA unavailable or timed out — fall back to blocking 4-byte transfer.
+         * Safe for init context; not for ISR context (control loop). */
+        status = HAL_SPI_Transmit(&hspi1, tx, 4, 5);
+    }
+
+    board_dac_cs_high();
+    spi1_tx_done = true;
+    return (status == HAL_OK) ? 0 : -1;
 }
 
 int dac8568_init(void)

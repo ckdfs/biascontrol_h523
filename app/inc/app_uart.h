@@ -17,4 +17,11 @@
  */
 void app_uart_init(void);
 
+/**
+ * Dispatch any pending UART command.
+ * Must be called from the main loop (non-ISR context).
+ * The UART receive callback only queues commands; this function executes them.
+ */
+void app_uart_process(void);
+
 #endif /* APP_UART_H */
