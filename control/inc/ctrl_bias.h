@@ -19,10 +19,11 @@
  *   - PID correction (bias voltage update)
  *
  * Control flow:
- *   1. ADC ISR calls bias_ctrl_feed_sample() for each new sample
- *   2. Internally runs Goertzel on f0 and 2*f0
- *   3. Every N samples (Goertzel block), accumulates results
- *   4. Every M blocks (control decimation), runs the PID loop
+ *   1. ADC ISR calls bias_ctrl_feed_sample() for each new sample pair
+ *   2. Internally runs Goertzel on CH0 for f0 and 2*f0
+ *   3. Accumulates CH1 as the DC reference
+ *   4. Every N samples (Goertzel block), accumulates results
+ *   5. Every M blocks (control decimation), runs the PID loop
  *   5. PID output updates the DAC bias setpoint
  */
 
@@ -77,20 +78,21 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
                     float kp, float ki);
 
 /**
- * Feed one ADC sample into the controller.
- * Called from ADC ISR (DRDY interrupt handler) at sample rate (32kHz).
+ * Feed one ADC sample pair into the controller.
+ * Called from ADC ISR (DRDY interrupt handler) at sample rate.
  *
  * This function:
- *   1. Feeds the sample to both Goertzel detectors
- *   2. Accumulates DC sum
+ *   1. Feeds CH0 to both Goertzel detectors
+ *   2. Accumulates CH1 as the DC reference
  *   3. When a Goertzel block completes, increments block counter
  *   4. When enough blocks accumulated, runs PID and updates bias
  *
- * @param ctrl    Controller state
- * @param sample  ADC sample (float, converted from 24-bit code)
- * @return        true if control loop ran this cycle (new bias available)
+ * @param ctrl       Controller state
+ * @param sample_ac  CH0 sample used for H1/H2 extraction
+ * @param sample_dc  CH1 sample used for DC normalization
+ * @return           true if control loop ran this cycle (new bias available)
  */
-bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample);
+bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc);
 
 /**
  * Get the current DAC output value (bias + pilot tone).

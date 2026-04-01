@@ -72,4 +72,33 @@ void goertzel_get_result(goertzel_state_t *g, float *magnitude, float *phase);
  */
 void goertzel_reset(goertzel_state_t *g);
 
+/* =========================================================================
+ * DC block accumulator — for CH1 (pure DC channel)
+ *
+ * Accumulates N samples and returns the block mean.  Use this instead of
+ * a k=0 Goertzel instance because CH1 carries only DC; a simple mean is
+ * cheaper and numerically cleaner.
+ * ========================================================================= */
+
+typedef struct {
+    float    sum;        /**< Running sum of samples in current block */
+    uint32_t count;      /**< Samples accumulated so far */
+    uint32_t block_size; /**< N: block size (should match Goertzel block size) */
+} dc_accum_t;
+
+/** Initialize the DC accumulator. */
+void dc_accum_init(dc_accum_t *d, uint32_t block_size);
+
+/** Feed one CH1 sample into the accumulator. */
+void dc_accum_process(dc_accum_t *d, float sample);
+
+/** Return true when a full block of N samples has been accumulated. */
+bool dc_accum_ready(const dc_accum_t *d);
+
+/** Return the block mean. Only valid when dc_accum_ready() is true. */
+float dc_accum_get_mean(const dc_accum_t *d);
+
+/** Reset for the next block. */
+void dc_accum_reset(dc_accum_t *d);
+
 #endif /* DSP_GOERTZEL_H */

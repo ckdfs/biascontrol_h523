@@ -113,6 +113,11 @@ make && ctest
 ### printf / scanf with newlib-nano
 - **Float printf requires a linker flag.** newlib-nano omits `%f`/`%e` by default.
   Add to `CMakeLists.txt`: `target_link_options(... PRIVATE -u _printf_float)`
+- **Stack must be at least 0x2000 (8KB) for float printf.** `_dtoa_r` (used by `%f`/`%e`)
+  requires a deep call stack. The CubeMX default `_Min_Stack_Size = 0x1000` triggers a
+  Cortex-M33 STKOF HardFault and silently hangs after the first non-float `printf` succeeds.
+  Fix: set `_Min_Stack_Size = 0x2000` in `cubemx/STM32H523xx_FLASH.ld`.
+  Diagnosis tip: CFSR @ 0xE000ED28 will show `0x00100000` (bit 20 = STKOF).
 - **`_scanf_float` is NOT available** in this newlib-nano build — linker rejects it.
   Use `strtof(str, &endptr)` instead of `sscanf(str, "%f", &v)` for float parsing.
   Check `endptr != str` to detect parse failure.
@@ -126,8 +131,16 @@ make && ctest
   soldered), the firmware should log a warning and continue rather than hanging in FAULT
   state, which makes other peripheral testing impossible.
 
+## DSP / Phase-02 Notes (2026-04)
+- If UART commands suddenly stop responding, first check whether another host serial tool still
+  owns `/dev/cu.usbmodem103`.
+- If `cmake --build build-test` pulls in embedded targets and fails on the host assembler, run
+  the native test binary directly (for example `build-test/test_goertzel`).
+
 ## Critical Invariants
 - Goertzel block size N must ensure integer cycles of pilot frequency (no spectral leakage)
+- Longer coherent Goertzel blocks are preferred for weak harmonic measurements, as long as the
+  integer-cycle rule is preserved
 - Harmonic magnitudes must be normalized by DC power before error computation
 - DAC output = bias_setpoint + pilot_sample, updated synchronously with ADC
 - PI controller must have anti-windup clamping

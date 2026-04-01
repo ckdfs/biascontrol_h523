@@ -14,8 +14,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-#define SAMPLE_RATE 32000.0f
-#define BLOCK_SIZE  32
+#define SAMPLE_RATE 64000.0f
+#define BLOCK_SIZE  640
 #define TOLERANCE   0.01f
 
 static int tests_passed = 0;
@@ -187,6 +187,56 @@ static void test_multi_block(void)
     }
 }
 
+/**
+ * Test 7: DC accumulator (models CH1 — pure DC channel).
+ */
+static void test_dc_accum(void)
+{
+    printf("\n[Test] DC accumulator: constant value 2.5\n");
+
+    dc_accum_t d;
+    dc_accum_init(&d, BLOCK_SIZE);
+
+    for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
+        dc_accum_process(&d, 2.5f);
+    }
+
+    if (!dc_accum_ready(&d)) {
+        tests_failed++;
+        printf("  FAIL: dc_accum_ready() returned false after %d samples\n", BLOCK_SIZE);
+        return;
+    }
+
+    check("dc mean", dc_accum_get_mean(&d), 2.5f, TOLERANCE);
+
+    /* Verify reset and reuse */
+    dc_accum_reset(&d);
+    for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
+        dc_accum_process(&d, -1.0f);
+    }
+    check("dc mean after reset", dc_accum_get_mean(&d), -1.0f, TOLERANCE);
+}
+
+/**
+ * Test 8: DC accumulator with AC + DC signal on CH1.
+ * Any residual AC averages to zero over an integer number of cycles.
+ */
+static void test_dc_accum_rejects_ac(void)
+{
+    printf("\n[Test] DC accumulator: DC=1.5 + 1kHz AC (should average to DC)\n");
+
+    dc_accum_t d;
+    dc_accum_init(&d, BLOCK_SIZE);
+
+    /* BLOCK_SIZE=640 @ 64kSPS = exactly 10 cycles of 1kHz — AC term sums to 0 */
+    for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
+        float sample = 1.5f + 0.5f * sinf(2.0f * M_PI * 1000.0f * i / SAMPLE_RATE);
+        dc_accum_process(&d, sample);
+    }
+
+    check("dc mean (reject AC)", dc_accum_get_mean(&d), 1.5f, TOLERANCE);
+}
+
 int main(void)
 {
     printf("=== Goertzel Algorithm Unit Tests ===\n");
@@ -198,6 +248,8 @@ int main(void)
     test_two_tone();
     test_phase();
     test_multi_block();
+    test_dc_accum();
+    test_dc_accum_rejects_ac();
 
     printf("\n=== Results: %d passed, %d failed ===\n",
            tests_passed, tests_failed);

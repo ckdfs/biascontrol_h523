@@ -55,18 +55,18 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     }
 }
 
-bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample)
+bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
 {
     if (!ctrl->running) {
         return false;
     }
 
-    /* Feed sample to both Goertzel detectors */
-    goertzel_process_sample(&ctrl->goertzel_h1, sample);
-    goertzel_process_sample(&ctrl->goertzel_h2, sample);
+    /* CH0 carries the AC pilot response used for harmonic extraction. */
+    goertzel_process_sample(&ctrl->goertzel_h1, sample_ac);
+    goertzel_process_sample(&ctrl->goertzel_h2, sample_ac);
 
-    /* Accumulate DC */
-    ctrl->dc_sum += sample;
+    /* CH1 carries the DC reference used for normalization. */
+    ctrl->dc_sum += sample_dc;
     ctrl->dc_count++;
 
     /* Check if Goertzel block is complete */

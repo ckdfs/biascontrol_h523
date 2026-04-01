@@ -3,9 +3,16 @@
 #include "drv_board.h"
 #include "drv_dac8568.h"
 #include "drv_ads131m02.h"
+#include "dsp_goertzel.h"
+#include "dsp_types.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
 
 /* ========================================================================= */
 /*  Application context (singleton)                                          */
@@ -55,11 +62,12 @@ static void adc_drdy_callback(const ads131m02_sample_t *sample)
         return;
     }
 
-    /* Convert raw 24-bit code to voltage */
-    float voltage = ads131m02_code_to_voltage(sample->ch0, ADS131M02_GAIN_1);
+    /* CH0 carries AC pilot response; CH1 carries DC reference. */
+    float ac_voltage = ads131m02_code_to_voltage(sample->ch0, ADS131M02_GAIN_1);
+    float dc_voltage = ads131m02_code_to_voltage(sample->ch1, ADS131M02_GAIN_1);
 
     /* Feed into bias controller */
-    bool ctrl_updated = bias_ctrl_feed_sample(&ctx.bias_ctrl, voltage);
+    bool ctrl_updated = bias_ctrl_feed_sample(&ctx.bias_ctrl, ac_voltage, dc_voltage);
 
     /* If control loop ran, update DAC output */
     if (ctrl_updated || ctx.bias_ctrl.running) {
@@ -304,9 +312,9 @@ void app_handle_command(const char *cmd)
          * Acquisition and printing are intentionally separated: interleaving
          * printf (blocking UART TX) with DRDY polling causes large gaps because
          * each printf line takes ~4 ms at 115200 baud while the ADC fires every
-         * 31 µs at 32 kSPS, causing ~128 samples to be skipped per print.
+         * 15.6 µs at 64 kSPS, causing ~256 samples to be skipped per print.
          *
-         * At 32 kSPS, 64 samples cover 2 ms — two full cycles of a 1 kHz sine. */
+         * At 64 kSPS, 64 samples cover 1 ms — one full cycle of a 1 kHz sine. */
         int n = 64;
         if (cmd[3] == ' ' && cmd[4] != '\0') {
             int parsed = atoi(cmd + 4);
@@ -343,9 +351,120 @@ void app_handle_command(const char *cmd)
         for (int i = 0; i < count; i++) {
             float v0 = ads131m02_code_to_voltage(samples[i].ch0, ADS131M02_GAIN_1);
             float v1 = ads131m02_code_to_voltage(samples[i].ch1, ADS131M02_GAIN_1);
-            printf("  [%3d] CH0=%9ld (%+.4fV)  CH1=%9ld (%+.4fV)\r\n",
+            printf("  [%3d] CH0=%9ld (%+.6fV)  CH1=%9ld (%+.6fV)\r\n",
                    i, (long)samples[i].ch0, (double)v0,
                    (long)samples[i].ch1, (double)v1);
+        }
+    } else if (strncmp(cmd, "goertzel", 8) == 0) {
+        /* "goertzel [N]" — run N Goertzel blocks (default 1), print H1/H2/DC per block.
+         * CH0 (AC): extracts f0=1 kHz (H1) and 2f0=2 kHz (H2) via Goertzel.
+         * CH1 (DC): block mean via dc_accum.
+         * Block size = DSP_GOERTZEL_BLOCK_SIZE (10 full pilot cycles = 10 ms). */
+        int n_blocks = 1;
+        if (cmd[8] == ' ' && cmd[9] != '\0') {
+            int parsed = atoi(cmd + 9);
+            if (parsed > 0 && parsed <= 100) {
+                n_blocks = parsed;
+            }
+        }
+
+        goertzel_state_t g_f0, g_2f0;
+        dc_accum_t dc;
+        goertzel_init(&g_f0,  (float)DSP_PILOT_FREQ_HZ,        (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+        goertzel_init(&g_2f0, (float)DSP_PILOT_FREQ_HZ * 2.0f, (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+        dc_accum_init(&dc, DSP_GOERTZEL_BLOCK_SIZE);
+
+        float h1_sum = 0.0f, h1_sq_sum = 0.0f;
+        float h2_sum = 0.0f, h2_sq_sum = 0.0f;
+        float dc_sum = 0.0f, dc_sq_sum = 0.0f;
+        int blocks_done = 0;
+
+        static const float INV_SQRT2 = 0.70710678f;
+        static const float DBV_FLOOR = -120.0f;
+
+        bool drdy_timeout = false;
+        for (int b = 0; b < n_blocks && !drdy_timeout; b++) {
+            goertzel_reset(&g_f0);
+            goertzel_reset(&g_2f0);
+            dc_accum_reset(&dc);
+
+            for (uint32_t i = 0; i < DSP_GOERTZEL_BLOCK_SIZE; i++) {
+                uint32_t t0 = HAL_GetTick();
+                while (board_adc_drdy_read() != 0) {
+                    if ((HAL_GetTick() - t0) > 5) {
+                        drdy_timeout = true;
+                        break;
+                    }
+                }
+                if (drdy_timeout) { break; }
+
+                ads131m02_sample_t s;
+                if (ads131m02_read_sample(&s) == 0 && s.valid) {
+                    float ch0 = ads131m02_code_to_voltage(s.ch0, ADS131M02_GAIN_1);
+                    float ch1 = ads131m02_code_to_voltage(s.ch1, ADS131M02_GAIN_1);
+                    goertzel_process_sample(&g_f0,  ch0);
+                    goertzel_process_sample(&g_2f0, ch0);
+                    dc_accum_process(&dc, ch1);
+                }
+            }
+
+            if (drdy_timeout) {
+                printf("[dsp] DRDY timeout\r\n");
+                break;
+            }
+
+            float h1_mag, h1_phase, h2_mag, h2_phase;
+            goertzel_get_result(&g_f0,  &h1_mag, &h1_phase);
+            goertzel_get_result(&g_2f0, &h2_mag, &h2_phase);
+            float dc_val = dc_accum_get_mean(&dc);
+
+            /* Convert peak amplitude to dBV (RMS reference, same as oscilloscope spectrum).
+             * dBV = 20*log10(V_peak / sqrt(2)).  Clamp to -120 dBV floor to avoid log(0). */
+            float h1_dbv = (h1_mag > 1e-6f) ? 20.0f * log10f(h1_mag * INV_SQRT2) : DBV_FLOOR;
+            float h2_dbv = (h2_mag > 1e-6f) ? 20.0f * log10f(h2_mag * INV_SQRT2) : DBV_FLOOR;
+
+            printf("[dsp] blk%2d  H1=%+.6fV(%+.1fdBV)@%+6.1fdeg  H2=%+.6fV(%+.1fdBV)@%+6.1fdeg  DC=%+.6fV\r\n",
+                   b,
+                   (double)h1_mag, (double)h1_dbv, (double)(h1_phase * (float)(180.0 / M_PI)),
+                   (double)h2_mag, (double)h2_dbv, (double)(h2_phase * (float)(180.0 / M_PI)),
+                   (double)dc_val);
+
+            h1_sum += h1_mag;
+            h1_sq_sum += h1_mag * h1_mag;
+            h2_sum += h2_mag;
+            h2_sq_sum += h2_mag * h2_mag;
+            dc_sum += dc_val;
+            dc_sq_sum += dc_val * dc_val;
+            blocks_done++;
+        }
+
+        if (blocks_done > 0) {
+            float inv_blocks = 1.0f / (float)blocks_done;
+            float h1_mean = h1_sum * inv_blocks;
+            float h2_mean = h2_sum * inv_blocks;
+            float dc_mean = dc_sum * inv_blocks;
+
+            float h1_var = h1_sq_sum * inv_blocks - h1_mean * h1_mean;
+            float h2_var = h2_sq_sum * inv_blocks - h2_mean * h2_mean;
+            float dc_var = dc_sq_sum * inv_blocks - dc_mean * dc_mean;
+            if (h1_var < 0.0f) { h1_var = 0.0f; }
+            if (h2_var < 0.0f) { h2_var = 0.0f; }
+            if (dc_var < 0.0f) { dc_var = 0.0f; }
+
+            float h1_std = sqrtf(h1_var);
+            float h2_std = sqrtf(h2_var);
+            float dc_std = sqrtf(dc_var);
+            float h1_mean_dbv = (h1_mean > 1e-6f) ? 20.0f * log10f(h1_mean * INV_SQRT2) : DBV_FLOOR;
+            float h2_mean_dbv = (h2_mean > 1e-6f) ? 20.0f * log10f(h2_mean * INV_SQRT2) : DBV_FLOOR;
+            float h2_rel_dbc = (h1_mean > 1e-9f && h2_mean > 1e-9f) ? 20.0f * log10f(h2_mean / h1_mean) : DBV_FLOOR;
+            float window_ms = 1000.0f * (float)(blocks_done * DSP_GOERTZEL_BLOCK_SIZE) / (float)DSP_SAMPLE_RATE_HZ;
+
+            printf("[dsp] mean %d blks (%.1f ms): H1=%+.6fV(%+.1fdBV) sigma=%.4fmV  "
+                   "H2=%+.6fV(%+.1fdBV, %+.1fdBc) sigma=%.4fmV  DC=%+.6fV sigma=%.4fmV\r\n",
+                   blocks_done, (double)window_ms,
+                   (double)h1_mean, (double)h1_mean_dbv, (double)(h1_std * 1000.0f),
+                   (double)h2_mean, (double)h2_mean_dbv, (double)h2_rel_dbc, (double)(h2_std * 1000.0f),
+                   (double)dc_mean, (double)(dc_std * 1000.0f));
         }
     } else if (strncmp(cmd, "set mod ", 8) == 0) {
         const char *mod = cmd + 8;

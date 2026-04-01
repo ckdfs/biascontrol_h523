@@ -57,3 +57,36 @@ void goertzel_reset(goertzel_state_t *g)
     g->s2 = 0.0f;
     g->count = 0;
 }
+
+/* =========================================================================
+ * DC block accumulator (CH1)
+ * ========================================================================= */
+
+void dc_accum_init(dc_accum_t *d, uint32_t block_size)
+{
+    d->block_size = block_size;
+    d->sum   = 0.0f;
+    d->count = 0;
+}
+
+void dc_accum_process(dc_accum_t *d, float sample)
+{
+    d->sum += sample;
+    d->count++;
+}
+
+bool dc_accum_ready(const dc_accum_t *d)
+{
+    return d->count >= d->block_size;
+}
+
+float dc_accum_get_mean(const dc_accum_t *d)
+{
+    return d->sum / (float)d->block_size;
+}
+
+void dc_accum_reset(dc_accum_t *d)
+{
+    d->sum   = 0.0f;
+    d->count = 0;
+}

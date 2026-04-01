@@ -32,11 +32,14 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -g"  CACHE STRING "" FORCE)
 set(CUBEMX_DIR ${CMAKE_SOURCE_DIR}/cubemx)
 
 # Linker script (CubeMX generated, heap=0x800, stack=0x1000)
-add_link_options(
-    -Wl,--gc-sections
-    -Wl,--print-memory-usage
-    -T${CUBEMX_DIR}/STM32H523xx_FLASH.ld
-)
+# Guard ARM-specific flags so they are not applied to host-side unit tests.
+if(NOT BUILD_TESTS)
+    add_link_options(
+        -Wl,--gc-sections
+        -Wl,--print-memory-usage
+        -T${CUBEMX_DIR}/STM32H523xx_FLASH.ld
+    )
+endif()
 
 # Startup assembly
 set(STARTUP_SRC ${CUBEMX_DIR}/startup_stm32h523xx.s)
