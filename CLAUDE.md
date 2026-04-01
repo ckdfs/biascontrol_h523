@@ -66,9 +66,9 @@ mkdir -p build && cd build
 cmake -DCMAKE_TOOLCHAIN_FILE=../cmake/arm-none-eabi.cmake ..
 make -j$(nproc)
 
-# Flash via OpenOCD
-openocd -f interface/stlink.cfg -f target/stm32h5x.cfg \
-  -c "program biascontrol.elf verify reset exit"
+# Flash via pyocd (REQUIRED — OpenOCD 0.12.0 does NOT support STM32H5)
+# Install once: pip3 install pyocd
+pyocd flash -t stm32h523cetx build/biascontrol.elf
 
 # Host-side unit tests (native compiler)
 mkdir -p build-test && cd build-test
@@ -76,12 +76,55 @@ cmake -DBUILD_TESTS=ON ..
 make && ctest
 ```
 
+> **DO NOT use OpenOCD or stlink-tools to flash STM32H523.**
+> OpenOCD 0.12.0 has no `stm32h5x.cfg`; stlink-tools 1.8.0 reports `unknown chipid`.
+> Only `pyocd` with target `stm32h523cetx` works reliably.
+
 ## Adding a New Modulator Type
 1. Create `control/src/ctrl_modulator_<name>.c` and `.h`
 2. Implement `modulator_strategy_t` interface (compute_error, is_locked, init)
 3. Add enum entry in `ctrl_modulator.h` → `modulator_type_t`
 4. Register in `modulator_get_strategy()` lookup table
 5. No changes needed in ctrl_bias.c or app layer
+
+## Bring-Up Lessons Learned (spec-01, 2026-04)
+
+### Flashing
+- **Use pyocd, not OpenOCD.** OpenOCD 0.12.0 and stlink-tools 1.8.0 both lack STM32H5
+  support. `pyocd flash -t stm32h523cetx` is the only working method on this host.
+- Serial port enumerates as `/dev/tty.usbmodem103` (not `usbmodem2103` as expected).
+
+### GPDMA / SPI DMA
+- **SPI1 TX DMA (GPDMA1 Ch0) callback never fired.** `HAL_SPI_TxCpltCallback` was never
+  called for DAC writes. Root cause: `__HAL_LINKDMA` in the gitignored `cubemx/Core/Src/spi.c`
+  was not called for this channel. Fix: switched DAC driver to blocking `HAL_SPI_Transmit`.
+  Blocking is fast enough (32-bit frame at 15.6 MHz ≈ 2 µs) and simpler.
+- **GPDMA1 Ch4 (USART1 RX) is linked-list circular mode.** `Size` parameter in
+  `HAL_UARTEx_RxEventCallback` is CUMULATIVE bytes since DMA start, not per-burst.
+  Must track `rx_prev_pos` and only process the delta. Do NOT call
+  `HAL_UARTEx_ReceiveToIdle_DMA` again inside the callback — it runs forever automatically.
+
+### ISR / Main-Loop Isolation
+- **Never call blocking functions from a UART RX ISR.** Dispatching commands directly from
+  `HAL_UARTEx_RxEventCallback` deadlocked SysTick: `board_delay_ms()` → `HAL_Delay()` polls
+  SysTick, which is blocked by the higher-priority UART ISR. Fix: ISR only copies command into
+  `pending_cmd` and sets `pending_cmd_ready`; main loop calls `app_uart_process()`.
+
+### printf / scanf with newlib-nano
+- **Float printf requires a linker flag.** newlib-nano omits `%f`/`%e` by default.
+  Add to `CMakeLists.txt`: `target_link_options(... PRIVATE -u _printf_float)`
+- **`_scanf_float` is NOT available** in this newlib-nano build — linker rejects it.
+  Use `strtof(str, &endptr)` instead of `sscanf(str, "%f", &v)` for float parsing.
+  Check `endptr != str` to detect parse failure.
+
+### Command Parsing
+- **Check specific prefixes before generic ones.** `strcmp(cmd, "dac mid")` must come
+  BEFORE `strncmp(cmd, "dac ", 4)`, otherwise "dac mid" is swallowed by the generic branch.
+
+### DAC8568 Init
+- **Make DAC init non-fatal during bring-up.** If DAC SPI fails (e.g., DAC not yet
+  soldered), the firmware should log a warning and continue rather than hanging in FAULT
+  state, which makes other peripheral testing impossible.
 
 ## Critical Invariants
 - Goertzel block size N must ensure integer cycles of pilot frequency (no spectral leakage)

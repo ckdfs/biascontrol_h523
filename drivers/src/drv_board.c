@@ -16,14 +16,30 @@
  */
 
 /* ========================================================================= */
-/*  USART printf redirect                                                    */
+/*  USART printf redirect — DMA TX                                           */
 /* ========================================================================= */
 
-/* Redirect printf to USART1 via DMA */
+/*
+ * _write() — newlib/picolibc syscall backing printf().
+ *
+ * Blocking HAL_UART_Transmit is intentional here.  A DMA-based _write()
+ * requires the UART TC interrupt chain (GPDMA TCF → UART TC → callback) to
+ * fire reliably between every printf() call.  On STM32H5 GPDMA this chain
+ * can stall (same root cause as the SPI1 DMA callback issue documented in
+ * CLAUDE.md), causing subsequent writes to be silently discarded.
+ *
+ * Blocking TX is safe because the only latency-sensitive path (ADC sample
+ * acquisition) now performs all its printf() calls *after* the full sample
+ * burst is collected, never interleaved with DRDY polling.
+ */
+void board_uart_tx_cplt(void)
+{
+    /* No-op: retained so drv_callbacks.c compiles without change. */
+}
+
 int _write(int fd, char *ptr, int len)
 {
     (void)fd;
-    /* Use blocking transmit for printf (safe from any context, simple) */
     HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
     return len;
 }

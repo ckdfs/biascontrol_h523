@@ -5,7 +5,7 @@
 #include "stm32h5xx_hal.h"
 
 /*
- * DAC8568 driver implementation.
+ * DAC8568 driver — blocking SPI implementation.
  *
  * SPI frame format (32 bits, MSB first):
  *   [31:28] Prefix  = 0x0 (normal operation)
@@ -14,42 +14,25 @@
  *   [19:4]  Data    = 16-bit value
  *   [3:0]   Feature = command-dependent
  *
- * SYNC (CS) active low: pull low before SPI transfer, release after.
- * SPI Mode 1: CPOL=0, CPHA=1 (data latched on falling edge of SCLK).
+ * SYNC (CS) active low: assert before SPI, deassert after.
+ * LDAC pulse: loads the newly written register to the analog output.
+ * Internal reference: 2.5 V → full-scale output = 5.0 V.
+ * Subtractor: V_out = 4 × V_dac − 10 V  →  range −10 V … +10 V.
+ *
+ * Timing note: at SPI1 clock ≤ 50 MHz, a 32-bit frame takes < 1 µs.
+ * HAL_SPI_Transmit with 5 ms timeout is safe from any non-ISR context.
  */
-
-/* SPI TX complete flag for DMA transfers */
-static volatile bool spi1_tx_done = true;
-
-/* ========================================================================= */
-/*  HAL callbacks                                                            */
-/* ========================================================================= */
-
-/**
- * SPI1 TX DMA complete callback.
- * Called by HAL from GPDMA1_Channel0 ISR.
- */
-void HAL_SPI_TxCpltCallback_DAC(SPI_HandleTypeDef *hspi)
-{
-    if (hspi == &hspi1) {
-        board_dac_cs_high();
-        spi1_tx_done = true;
-    }
-}
 
 /* ========================================================================= */
 /*  Internal helpers                                                         */
 /* ========================================================================= */
 
-/**
- * Build a 32-bit DAC8568 command frame.
- */
 static uint32_t dac8568_build_frame(uint8_t prefix, uint8_t control,
                                      uint8_t address, uint16_t data,
                                      uint8_t feature)
 {
     uint32_t frame = 0;
-    frame |= ((uint32_t)(prefix & 0x0F)) << 28;
+    frame |= ((uint32_t)(prefix  & 0x0F)) << 28;
     frame |= ((uint32_t)(control & 0x0F)) << 24;
     frame |= ((uint32_t)(address & 0x0F)) << 20;
     frame |= ((uint32_t)data) << 4;
@@ -63,48 +46,21 @@ static uint32_t dac8568_build_frame(uint8_t prefix, uint8_t control,
 
 int dac8568_send_raw(uint32_t frame)
 {
-    /* Wait for any previous DMA transfer to finish */
-    while (!spi1_tx_done) {
-        /* In ISR context this would deadlock — but dac8568_send_raw
-         * should only be called from thread context during init/control loop */
-    }
-
-    /* Convert to big-endian byte array for SPI transmission */
-    static uint8_t tx[4]; /* static so DMA can read after function returns */
+    uint8_t tx[4];
     tx[0] = (uint8_t)(frame >> 24);
     tx[1] = (uint8_t)(frame >> 16);
     tx[2] = (uint8_t)(frame >> 8);
     tx[3] = (uint8_t)(frame);
 
     board_dac_cs_low();
-
-    /* Try DMA path first; fall back to blocking if DMA not ready (e.g. not linked yet). */
-    spi1_tx_done = false;
-    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, tx, 4);
-
-    if (status == HAL_OK) {
-        /* Wait up to 10 ms for DMA TX-complete callback */
-        uint32_t deadline = HAL_GetTick() + 10;
-        while (!spi1_tx_done) {
-            if (HAL_GetTick() > deadline) {
-                /* DMA callback never fired — GPDMA link may be missing.
-                 * Fall through to blocking transfer below. */
-                spi1_tx_done = true;
-                HAL_SPI_Abort(&hspi1);
-                status = HAL_TIMEOUT;
-                break;
-            }
-        }
-    }
-
-    if (status != HAL_OK) {
-        /* DMA unavailable or timed out — fall back to blocking 4-byte transfer.
-         * Safe for init context; not for ISR context (control loop). */
-        status = HAL_SPI_Transmit(&hspi1, tx, 4, 5);
-    }
-
+    HAL_StatusTypeDef status = HAL_SPI_Transmit(&hspi1, tx, 4, 5);
     board_dac_cs_high();
-    spi1_tx_done = true;
+
+    /* Pulse LDAC to latch the written register to the analog output.
+     * Even for CMD_WRITE_UPDATE (0x03) this is harmless and ensures
+     * the output settles before the next operation. */
+    board_dac_ldac_pulse();
+
     return (status == HAL_OK) ? 0 : -1;
 }
 
@@ -112,33 +68,29 @@ int dac8568_init(void)
 {
     int ret;
 
+    /* Hardware CLR deassert — ensure clean state */
+    board_dac_clr_release();
+
     /* Software reset */
     ret = dac8568_reset();
     if (ret != 0) {
         return ret;
     }
-
-    /* Small delay after reset */
     board_delay_ms(1);
 
-    /* Enable internal reference (2.5V, static mode) */
+    /* Enable internal reference (2.5 V, static mode) */
     uint32_t frame = dac8568_build_frame(0x00, DAC8568_CMD_SETUP_INT_REF,
                                           0x00, 0x0000, DAC8568_INTREF_STATIC_ON);
     ret = dac8568_send_raw(frame);
     if (ret != 0) {
         return ret;
     }
-
     board_delay_ms(1);
 
-    /* Set all channels to mid-scale (0V output after subtractor) */
-    /* Mid-scale: V_dac = (0 - (-10)) / 4 = 2.5V → code = 2.5/5.0 * 65535 ≈ 32768 */
-    uint16_t mid_scale = 32768;
-    for (uint8_t ch = 0; ch < 8; ch++) {
-        ret = dac8568_write_channel(ch, mid_scale);
-        if (ret != 0) {
-            return ret;
-        }
+    /* Set all channels to mid-scale → 0 V after subtractor */
+    ret = dac8568_write_channel(DAC8568_CH_ALL, 32768);
+    if (ret != 0) {
+        return ret;
     }
 
     return 0;
@@ -172,17 +124,12 @@ void dac8568_ldac_update(void)
 
 int dac8568_write_all(const uint16_t values[8])
 {
-    int ret;
-
-    /* Write to all input registers without updating */
     for (uint8_t ch = 0; ch < 8; ch++) {
-        ret = dac8568_write_reg(ch, values[ch]);
+        int ret = dac8568_write_reg(ch, values[ch]);
         if (ret != 0) {
             return ret;
         }
     }
-
-    /* Update all outputs simultaneously via LDAC */
     dac8568_ldac_update();
     return 0;
 }

@@ -262,10 +262,13 @@ int ads131m02_init(void)
     /* Configure CLOCK register:
      * - Both channels enabled
      * - High-resolution power mode
-     * - OSR = 256 → ~32kSPS at 8.192MHz CLKIN
+     * - OSR = 128 → 64 kSPS at 8.192 MHz CLKIN (code 0x00)
+     *   Note: previously used ADS131M02_CLK_OSR_256 (old value 0x05 = code 5
+     *   = OSR 4096 = 2 kSPS), which was wrong.  Corrected to OSR_128 (0x00)
+     *   after empirical verification with a 1 kHz sine wave.
      */
     uint16_t clock_val = ADS131M02_CLK_CH0_EN | ADS131M02_CLK_CH1_EN |
-                         ADS131M02_CLK_PWR_HR | ADS131M02_CLK_OSR_256;
+                         ADS131M02_CLK_PWR_HR | ADS131M02_CLK_OSR_128;
     ret = ads131m02_write_reg(ADS131M02_REG_CLOCK, clock_val);
     if (ret != 0) {
         return ret;
@@ -278,7 +281,7 @@ int ads131m02_init(void)
         return ret;
     }
 
-    printf("[adc] configured: OSR=256, GAIN=1, 32kSPS\r\n");
+    printf("[adc] configured: OSR=128, GAIN=1, 64kSPS\r\n");
     return 0;
 }
 

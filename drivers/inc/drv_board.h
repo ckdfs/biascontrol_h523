@@ -83,7 +83,7 @@
 /* --- ADC ADS131M02 parameters --- */
 #define ADC_CHANNELS            2
 #define ADC_RESOLUTION_BITS     24
-#define ADC_SAMPLE_RATE_HZ      32000
+#define ADC_SAMPLE_RATE_HZ      64000  /* OSR=128, HR mode, 8.192 MHz CLKIN */
 
 /* ========================================================================= */
 /*  Board-level functions                                                    */
@@ -135,5 +135,11 @@ uint16_t board_voltage_to_dac_code(float voltage_v);
  * Convert DAC code to output voltage.
  */
 float board_dac_code_to_voltage(uint16_t code);
+
+/**
+ * Called from HAL_UART_TxCpltCallback (ISR context) when USART1 DMA TX
+ * completes. Clears the internal tx-busy flag so the next _write() can run.
+ */
+void board_uart_tx_cplt(void);
 
 #endif /* DRV_BOARD_H */

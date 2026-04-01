@@ -54,12 +54,29 @@
 /* CLOCK register bits */
 #define ADS131M02_CLK_CH0_EN        (1 << 8)
 #define ADS131M02_CLK_CH1_EN        (1 << 9)
-#define ADS131M02_CLK_OSR_128       0x0004
-#define ADS131M02_CLK_OSR_256       0x0005
-#define ADS131M02_CLK_OSR_512       0x0006
-#define ADS131M02_CLK_OSR_1024      0x0007
-#define ADS131M02_CLK_OSR_2048      0x0008
-#define ADS131M02_CLK_OSR_4096      0x0009
+/*
+ * OSR field: bits [2:0] of CLOCK register.
+ * Encoding per ADS131M02 datasheet Table 8-12:
+ *   0x00 → OSR=128  → 64 kSPS  @ 8.192 MHz CLKIN (HR mode)
+ *   0x01 → OSR=256  → 32 kSPS
+ *   0x02 → OSR=512  → 16 kSPS
+ *   0x03 → OSR=1024 →  8 kSPS
+ *   0x04 → OSR=2048 →  4 kSPS
+ *   0x05 → OSR=4096 →  2 kSPS
+ *   0x06 → OSR=8192 →  1 kSPS
+ *   0x07 → OSR=16384→ 500 SPS  (HR only)
+ *
+ * Previous values (0x04–0x09) were off by +4 — they encoded OSR=2048–16384
+ * instead of OSR=128–4096.  Verified empirically: 1 kHz sine wave produced
+ * exactly 1 complete cycle in 64 consecutive samples, consistent with
+ * fDATA = 64 kSPS (OSR=128, code=0x00), not 32 kSPS as previously assumed.
+ */
+#define ADS131M02_CLK_OSR_128       0x0000  /* 64  kSPS @ 8.192 MHz, HR */
+#define ADS131M02_CLK_OSR_256       0x0001  /* 32  kSPS */
+#define ADS131M02_CLK_OSR_512       0x0002  /* 16  kSPS */
+#define ADS131M02_CLK_OSR_1024      0x0003  /*  8  kSPS */
+#define ADS131M02_CLK_OSR_2048      0x0004  /*  4  kSPS */
+#define ADS131M02_CLK_OSR_4096      0x0005  /*  2  kSPS */
 #define ADS131M02_CLK_PWR_HR        (0x03 << 4)  /* High-resolution mode */
 #define ADS131M02_CLK_PWR_LP        (0x02 << 4)  /* Low-power mode */
 #define ADS131M02_CLK_PWR_VLP       (0x01 << 4)  /* Very low-power mode */

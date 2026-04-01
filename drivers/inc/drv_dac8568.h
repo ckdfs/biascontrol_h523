@@ -96,15 +96,10 @@ int dac8568_reset(void);
 int dac8568_set_voltage(uint8_t channel, float voltage_v);
 
 /**
- * Send a raw 32-bit command frame to the DAC8568 via SPI.
+ * Send a raw 32-bit command frame to the DAC8568 via SPI (blocking).
  * Low-level function used by all other functions.
+ * Returns 0 on success, -1 on SPI error.
  */
 int dac8568_send_raw(uint32_t frame);
-
-/**
- * SPI1 TX DMA complete callback dispatcher.
- * Called from HAL_SPI_TxCpltCallback when hspi == &hspi1.
- */
-void HAL_SPI_TxCpltCallback_DAC(SPI_HandleTypeDef *hspi);
 
 #endif /* DRV_DAC8568_H */

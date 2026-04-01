@@ -9,7 +9,7 @@
 | Spec | Status | Description |
 |------|--------|-------------|
 | [spec-00-hardware](spec-00-hardware.md) | **Reference** | Hardware pin mapping, signal chain, CubeMX config, NVIC, DMA |
-| [spec-01-bringup](spec-01-bringup.md) | **Active** | Board bring-up: DAC8568, ADS131M02, USART1 drivers |
+| [spec-01-bringup](spec-01-bringup.md) | **COMPLETE** ✅ | Board bring-up: DAC8568, ADS131M02, USART1 drivers |
 | [spec-02-dsp-pipeline](spec-02-dsp-pipeline.md) | Pending | Pilot tone generation + Goertzel harmonic extraction |
 | [spec-03-mzm-quad](spec-03-mzm-quad.md) | Pending | MZM quadrature closed-loop control |
 | [spec-04-robustness](spec-04-robustness.md) | Pending | Multi-bias-point, robustness, tuning interface |
@@ -21,10 +21,10 @@
 |-----------|-------|-------|
 | Pilot frequency f0 | 1 kHz | Well below RF band |
 | Pilot amplitude | ~50 mV (DAC ~164 LSB) | After 4x subtractor gain |
-| ADC sample rate | 32 kSPS | ADS131M02 max rate |
-| Goertzel block N | 32 | 1 cycle/block, no spectral leakage |
-| Control loop rate | ~100 Hz | Every 10 Goertzel blocks |
-| HSE crystal | 8.192 MHz | Divides evenly to 32 kHz |
+| ADC sample rate | 64 kSPS | ADS131M02 OSR=128, HR mode, 8.192 MHz CLKIN (verified empirically) |
+| Goertzel block N | 64 | 1 cycle/block at 64 kSPS × 1 kHz, no spectral leakage |
+| Control loop rate | ~100 Hz | Every 10 Goertzel blocks (640 ms total latency) |
+| HSE crystal | 8.192 MHz | Divides evenly for ADC CLKIN; MCO1 on PA8 |
 | FPU | FPv5-SP (hard float) | No software emulation needed |
 
 ## Architecture

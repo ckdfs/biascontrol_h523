@@ -24,4 +24,5 @@ void app_uart_init(void);
  */
 void app_uart_process(void);
 
+
 #endif /* APP_UART_H */

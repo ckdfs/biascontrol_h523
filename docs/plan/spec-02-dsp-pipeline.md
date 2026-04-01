@@ -8,7 +8,7 @@
 
 | File | Action |
 |------|--------|
-| `dsp/src/dsp_pilot_gen.c` | Implement 32-point sine LUT generator |
+| `dsp/src/dsp_pilot_gen.c` | Implement 64-point sine LUT generator |
 | `dsp/src/dsp_goertzel.c` | Implement sliding Goertzel for f0, 2f0, DC |
 | `dsp/inc/dsp_types.h` | Define harmonic_data_t if not already |
 | `test/test_goertzel.c` | Host-side unit test with synthetic data |
@@ -17,9 +17,9 @@
 ## Task Checklist
 
 ### 1. Pilot Tone Generator (`dsp_pilot_gen.c`)
-- [ ] 32-point sine LUT (1 kHz @ 32 kSPS → exactly 32 samples/period)
+- [ ] 64-point sine LUT (1 kHz @ 64 kSPS → exactly 64 samples/period)
 - [ ] `pilot_gen_init(amplitude_lsb)`: set amplitude in DAC LSB units
-- [ ] `pilot_gen_next()`: return next sample (wraps at index 32)
+- [ ] `pilot_gen_next()`: return next sample (wraps at index 64)
 - [ ] Amplitude: ~164 LSB → ~50 mV after subtractor (GAIN=4, DAC 5V/65536)
 - [ ] Verify: oscilloscope on DAC output, clean 1 kHz sine
 
@@ -30,7 +30,7 @@
 - [ ] `goertzel_get_phase(ctx)`: compute arg(X[k])
 - [ ] `goertzel_reset(ctx)`: prepare for next block
 - [ ] Maintain 3 instances: DC (k=0), f0 (k=1), 2f0 (k=2)
-- [ ] Block size N=32 ensures integer cycles (no spectral leakage)
+- [ ] Block size N=64 ensures integer cycles (no spectral leakage; 1 kHz × 64 samples/cycle @ 64 kSPS)
 
 ### 3. Host-Side Unit Test (`test/test_goertzel.c`)
 - [ ] Generate synthetic sine at f0, compute Goertzel, verify magnitude
@@ -45,7 +45,7 @@
 - [ ] Same callback → compute `dac_output = bias_setpoint + pilot_gen_next()`
 - [ ] Start SPI1 DMA write with new DAC value
 - [ ] SPI1 DMA complete → LDAC pulse
-- [ ] Timing budget: all within ~31.25 us (1/32kSPS)
+- [ ] Timing budget: all within ~15.625 µs (1/64kSPS)
 
 ### 5. Loopback Verification
 - [ ] Connect DAC output directly to ADC input (wire jumper)
@@ -59,5 +59,5 @@
 1. Host unit tests pass with <1% magnitude error and <1 degree phase error
 2. Pilot tone visible on oscilloscope as clean 1 kHz sine
 3. Loopback Goertzel output matches input within 5%
-4. Pipeline runs at 32 kSPS without dropping samples
+4. Pipeline runs at 64 kSPS without dropping samples
 5. CPU utilization measured (should be <30% of DRDY period)

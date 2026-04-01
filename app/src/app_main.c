@@ -5,6 +5,7 @@
 #include "drv_ads131m02.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* ========================================================================= */
 /*  Application context (singleton)                                          */
@@ -272,21 +273,79 @@ void app_handle_command(const char *cmd)
             ctx.config->target_point = BIAS_POINT_MIN;
         }
         bias_ctrl_set_target(&ctx.bias_ctrl, ctx.config->target_point);
-    } else if (strcmp(cmd, "adc") == 0) {
-        /* Take 8 blocking ADC samples and print raw codes + voltages.
-         * Useful for verifying the ADS131M02 signal chain without DAC. */
-        printf("ADC samples (blocking, 8x):\r\n");
-        for (int i = 0; i < 8; i++) {
-            ads131m02_sample_t s;
-            if (ads131m02_read_sample(&s) == 0) {
-                float v0 = ads131m02_code_to_voltage(s.ch0, ADS131M02_GAIN_1);
-                float v1 = ads131m02_code_to_voltage(s.ch1, ADS131M02_GAIN_1);
-                printf("  [%d] CH0=%8ld (%+.4fV)  CH1=%8ld (%+.4fV)\r\n",
-                       i, (long)s.ch0, (double)v0, (long)s.ch1, (double)v1);
+    } else if (strcmp(cmd, "dac mid") == 0) {
+        /* Set all 8 channels to 0 V output (mid-scale code 32768) */
+        int ret = dac8568_write_channel(DAC8568_CH_ALL, 32768);
+        printf("[dac] all channels -> 0.0 V, ret=%d\r\n", ret);
+    } else if (strncmp(cmd, "dac ", 4) == 0) {
+        /* "dac <voltage>"  — set DAC channel A to specified voltage (-10..+10 V).
+         * Used for hardware verification with a multimeter.
+         * Example: "dac 0.0" → subtractor output should read 0.0 V
+         *          "dac 5.0" → subtractor output should read 5.0 V  */
+        char *endptr = NULL;
+        float v = strtof(cmd + 4, &endptr);
+        if (endptr != cmd + 4) {
+            if (v < -10.0f) v = -10.0f;
+            if (v > 10.0f)  v = 10.0f;
+            uint16_t code = board_voltage_to_dac_code(v);
+            int ret = dac8568_write_channel(DAC8568_CH_A, code);
+            if (ret == 0) {
+                printf("[dac] CH_A set to %+.3f V (code=%u)\r\n", (double)v, code);
             } else {
-                printf("  [%d] SPI error\r\n", i);
+                printf("[dac] SPI error %d\r\n", ret);
             }
-            board_delay_ms(5);
+        } else {
+            printf("[dac] usage: dac <voltage>  (e.g. dac 0.0)\r\n");
+        }
+    } else if (strncmp(cmd, "adc", 3) == 0) {
+        /* "adc [N]" — collect N consecutive DRDY-gated samples (default 64),
+         * then print them all.
+         *
+         * Acquisition and printing are intentionally separated: interleaving
+         * printf (blocking UART TX) with DRDY polling causes large gaps because
+         * each printf line takes ~4 ms at 115200 baud while the ADC fires every
+         * 31 µs at 32 kSPS, causing ~128 samples to be skipped per print.
+         *
+         * At 32 kSPS, 64 samples cover 2 ms — two full cycles of a 1 kHz sine. */
+        int n = 64;
+        if (cmd[3] == ' ' && cmd[4] != '\0') {
+            int parsed = atoi(cmd + 4);
+            if (parsed > 0 && parsed <= 256) {
+                n = parsed;
+            }
+        }
+
+        /* Phase 1: Acquire all samples back-to-back (no printf here). */
+        ads131m02_sample_t samples[256];
+        int count = 0;
+        bool drdy_timeout = false;
+
+        for (int i = 0; i < n; i++) {
+            uint32_t t0 = HAL_GetTick();
+            while (board_adc_drdy_read() != 0) {
+                if ((HAL_GetTick() - t0) > 5) {
+                    drdy_timeout = true;
+                    goto adc_collect_done;
+                }
+            }
+            if (ads131m02_read_sample(&samples[count]) == 0) {
+                count++;
+            }
+        }
+        adc_collect_done:
+
+        /* Phase 2: Print all collected samples. */
+        printf("ADC samples (%d collected", count);
+        if (drdy_timeout) {
+            printf(", DRDY timeout");
+        }
+        printf("):\r\n");
+        for (int i = 0; i < count; i++) {
+            float v0 = ads131m02_code_to_voltage(samples[i].ch0, ADS131M02_GAIN_1);
+            float v1 = ads131m02_code_to_voltage(samples[i].ch1, ADS131M02_GAIN_1);
+            printf("  [%3d] CH0=%9ld (%+.4fV)  CH1=%9ld (%+.4fV)\r\n",
+                   i, (long)samples[i].ch0, (double)v0,
+                   (long)samples[i].ch1, (double)v1);
         }
     } else if (strncmp(cmd, "set mod ", 8) == 0) {
         const char *mod = cmd + 8;
