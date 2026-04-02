@@ -19,15 +19,15 @@
 /** Number of full pilot cycles integrated by each Goertzel block.
  *  Using multiple cycles improves SNR for weak harmonic extraction while
  *  preserving integer-cycle coherence (no spectral leakage). */
-#define DSP_GOERTZEL_BLOCK_CYCLES    10
+#define DSP_GOERTZEL_BLOCK_CYCLES    20
 
 /** Goertzel block size in samples.
- *  N = 64 samples/cycle * 10 cycles = 640 samples = 10 ms @ 64 kSPS. */
+ *  N = 64 samples/cycle * 20 cycles = 1280 samples = 20 ms @ 64 kSPS. */
 #define DSP_GOERTZEL_BLOCK_SIZE      (DSP_PILOT_PERIOD_SAMPLES * DSP_GOERTZEL_BLOCK_CYCLES)
 
 /** Number of Goertzel blocks per control update.
- *  With N=640 and decimation=1, control rate remains 64k / 640 = 100 Hz. */
-#define DSP_CONTROL_DECIMATION       1
+ *  With N=1280 and decimation=5, control rate is 64k / (1280 * 5) = 10 Hz. */
+#define DSP_CONTROL_DECIMATION       5
 
 /* ========================================================================= */
 /*  Harmonic analysis result — shared between DSP and Control layers         */

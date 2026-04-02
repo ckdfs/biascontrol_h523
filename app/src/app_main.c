@@ -413,21 +413,10 @@ void app_handle_command(const char *cmd)
                 break;
             }
 
-            float h1_mag, h1_phase, h2_mag, h2_phase;
-            goertzel_get_result(&g_f0,  &h1_mag, &h1_phase);
-            goertzel_get_result(&g_2f0, &h2_mag, &h2_phase);
+            float h1_mag, h1_phase_dummy, h2_mag, h2_phase_dummy;
+            goertzel_get_result(&g_f0,  &h1_mag, &h1_phase_dummy);
+            goertzel_get_result(&g_2f0, &h2_mag, &h2_phase_dummy);
             float dc_val = dc_accum_get_mean(&dc);
-
-            /* Convert peak amplitude to dBV (RMS reference, same as oscilloscope spectrum).
-             * dBV = 20*log10(V_peak / sqrt(2)).  Clamp to -120 dBV floor to avoid log(0). */
-            float h1_dbv = (h1_mag > 1e-6f) ? 20.0f * log10f(h1_mag * INV_SQRT2) : DBV_FLOOR;
-            float h2_dbv = (h2_mag > 1e-6f) ? 20.0f * log10f(h2_mag * INV_SQRT2) : DBV_FLOOR;
-
-            printf("[dsp] blk%2d  H1=%+.6fV(%+.1fdBV)@%+6.1fdeg  H2=%+.6fV(%+.1fdBV)@%+6.1fdeg  DC=%+.6fV\r\n",
-                   b,
-                   (double)h1_mag, (double)h1_dbv, (double)(h1_phase * (float)(180.0 / M_PI)),
-                   (double)h2_mag, (double)h2_dbv, (double)(h2_phase * (float)(180.0 / M_PI)),
-                   (double)dc_val);
 
             h1_sum += h1_mag;
             h1_sq_sum += h1_mag * h1_mag;

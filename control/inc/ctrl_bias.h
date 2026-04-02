@@ -42,6 +42,12 @@ typedef struct {
     float dc_sum;
     uint32_t dc_count;
 
+    /* Multi-block coherent accumulation for 10 Hz control updates */
+    float h1_i_sum;
+    float h1_q_sum;
+    float h2_i_sum;
+    float h2_q_sum;
+
     /* Control */
     pid_state_t pid;
     float bias_voltage;             /**< Current bias setpoint (volts) */

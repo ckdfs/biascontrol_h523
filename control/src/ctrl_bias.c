@@ -1,5 +1,6 @@
 #include "ctrl_bias.h"
 #include "drv_dac8568.h"
+#include <math.h>
 
 void bias_ctrl_init(bias_ctrl_t *ctrl,
                     modulator_type_t mod_type,
@@ -25,6 +26,10 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     /* DC accumulator */
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
+    ctrl->h1_i_sum = 0.0f;
+    ctrl->h1_q_sum = 0.0f;
+    ctrl->h2_i_sum = 0.0f;
+    ctrl->h2_q_sum = 0.0f;
 
     /* PID controller */
     float control_dt = (float)(DSP_GOERTZEL_BLOCK_SIZE * DSP_CONTROL_DECIMATION)
@@ -83,12 +88,11 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     goertzel_reset(&ctrl->goertzel_h1);
     goertzel_reset(&ctrl->goertzel_h2);
 
-    /* Accumulate harmonics (simple averaging over decimation blocks) */
-    /* For now, use the latest block directly. TODO: averaging */
-    ctrl->last_harmonics.h1_magnitude = h1_mag;
-    ctrl->last_harmonics.h2_magnitude = h2_mag;
-    ctrl->last_harmonics.h1_phase = h1_phase;
-    ctrl->last_harmonics.h2_phase = h2_phase;
+    /* Coherently accumulate harmonics across multiple blocks before updating control. */
+    ctrl->h1_i_sum += h1_mag * cosf(h1_phase);
+    ctrl->h1_q_sum += h1_mag * sinf(h1_phase);
+    ctrl->h2_i_sum += h2_mag * cosf(h2_phase);
+    ctrl->h2_q_sum += h2_mag * sinf(h2_phase);
 
     ctrl->block_count++;
 
@@ -97,6 +101,23 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
         return false;
     }
     ctrl->block_count = 0;
+
+    /* Convert the multi-block coherent sums back to averaged magnitude / phase. */
+    float inv_blocks = 1.0f / (float)ctrl->control_decimation;
+    float h1_i = ctrl->h1_i_sum * inv_blocks;
+    float h1_q = ctrl->h1_q_sum * inv_blocks;
+    float h2_i = ctrl->h2_i_sum * inv_blocks;
+    float h2_q = ctrl->h2_q_sum * inv_blocks;
+
+    ctrl->last_harmonics.h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
+    ctrl->last_harmonics.h2_magnitude = sqrtf(h2_i * h2_i + h2_q * h2_q);
+    ctrl->last_harmonics.h1_phase = atan2f(h1_q, h1_i);
+    ctrl->last_harmonics.h2_phase = atan2f(h2_q, h2_i);
+
+    ctrl->h1_i_sum = 0.0f;
+    ctrl->h1_q_sum = 0.0f;
+    ctrl->h2_i_sum = 0.0f;
+    ctrl->h2_q_sum = 0.0f;
 
     /* Compute DC power (average over all samples in the decimation window) */
     if (ctrl->dc_count > 0) {
@@ -141,6 +162,10 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
     pid_reset(&ctrl->pid);
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
+    ctrl->h1_i_sum = 0.0f;
+    ctrl->h1_q_sum = 0.0f;
+    ctrl->h2_i_sum = 0.0f;
+    ctrl->h2_q_sum = 0.0f;
     ctrl->block_count = 0;
     ctrl->running = true;
     ctrl->locked = false;

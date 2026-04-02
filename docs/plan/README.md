@@ -23,8 +23,8 @@
 | Pilot amplitude | ~50 mV (DAC ~164 LSB) | After 4x subtractor gain |
 | ADC sample rate | 64 kSPS | ADS131M02 OSR=128, HR mode, 8.192 MHz CLKIN (verified empirically) |
 | Pilot base period | 64 samples | 1 cycle at 64 kSPS × 1 kHz |
-| Goertzel block N | 640 | 10 coherent pilot cycles/block (10 ms window) |
-| Control loop rate | ~100 Hz | 1 Goertzel block/update (10 ms latency) |
+| Goertzel block N | 1280 | 20 coherent pilot cycles/block (20 ms window) |
+| Control loop rate | ~10 Hz | 5 Goertzel blocks/update (100 ms latency) |
 | HSE crystal | 8.192 MHz | Divides evenly for ADC CLKIN; MCO1 on PA8 |
 | FPU | FPv5-SP (hard float) | No software emulation needed |
 
@@ -48,3 +48,9 @@ PD → TIA(OPA140) → ADS131M02 CH0 → Goertzel(f0, 2f0)
                                           |
                               error → PID → update bias
 ```
+
+## Measurement Artifacts
+
+- Scan raw data and derived plots live under `docs/scans/`
+- Raw UART captures: `docs/scans/raw/`
+- Generated figures: `docs/scans/plots/`

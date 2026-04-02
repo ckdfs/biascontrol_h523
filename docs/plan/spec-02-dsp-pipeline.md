@@ -4,12 +4,13 @@
 > Goal: Pilot tone generation + Goertzel harmonic extraction, verified end-to-end
 > Depends on: spec-01-bringup (working DAC + ADC + DMA)
 
-## Current Assessment (2026-04-01)
+## Current Assessment (2026-04-02)
 
 - DSP core is in place: pilot LUT, H1/H2 Goertzel, CH1 DC accumulation, host-side unit tests, and UART debug commands.
-- Current default analysis window is 640 samples (10 coherent pilot cycles, 10 ms).
+- Current default analysis window is 1280 samples (20 coherent pilot cycles, 20 ms).
+- Control updates now run at 10 Hz by coherently averaging 5 Goertzel blocks per PID update.
 - Closed-loop and debug paths now both use CH0 for H1/H2 and CH1 for DC.
-- Board-side debug is working. On 2026-04-01, `goertzel 3` reported `H1=0.189728 V`, `H2=0.000126 V (-81.0 dBV)`, `DC=0.459994 V`.
+- Recent MZM bias scans have been archived under `docs/scans/` for both 100 mVpp and 50 mVpp pilot amplitudes.
 - Remaining gaps: documented DAC-to-ADC loopback result, SPI1 DMA write path, and measured ISR timing budget.
 
 ## Files to Modify
@@ -39,7 +40,7 @@
 - [x] `goertzel_reset(ctx)`: prepare for next block
 - [x] Maintain H1/H2 Goertzel instances plus a dedicated DC accumulator for CH1
 - [x] Base pilot period remains 64 samples/cycle at 64 kSPS
-- [x] Goertzel analysis block spans multiple complete pilot cycles (default: 10 cycles = 640 samples) to improve weak-tone SNR without spectral leakage
+- [x] Goertzel analysis block spans multiple complete pilot cycles (default: 20 cycles = 1280 samples) to improve weak-tone SNR without spectral leakage
 
 ### 3. Host-Side Unit Test (`test/test_goertzel.c`)
 - [x] Generate synthetic sine at f0, compute Goertzel, verify magnitude
@@ -65,6 +66,11 @@ Note: the current implementation writes SPI1 in blocking mode from the ADC callb
 - [ ] Verify 2f0 magnitude is near zero (no distortion)
 - [ ] Verify CH1 DC magnitude matches DAC bias offset
 - [x] Print harmonics via USART1 for debugging
+
+### 6. Measurement Data Management
+- [x] Store scan raw text captures under `docs/scans/raw/`
+- [x] Store generated scan plots under `docs/scans/plots/`
+- [x] Distinguish scan artifacts by pilot amplitude in filenames
 
 ## Acceptance Criteria
 1. Host unit tests pass with <1% magnitude error and <1 degree phase error

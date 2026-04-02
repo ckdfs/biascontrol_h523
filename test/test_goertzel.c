@@ -15,7 +15,7 @@
 #endif
 
 #define SAMPLE_RATE 64000.0f
-#define BLOCK_SIZE  640
+#define BLOCK_SIZE  1280
 #define TOLERANCE   0.01f
 
 static int tests_passed = 0;
@@ -228,7 +228,7 @@ static void test_dc_accum_rejects_ac(void)
     dc_accum_t d;
     dc_accum_init(&d, BLOCK_SIZE);
 
-    /* BLOCK_SIZE=640 @ 64kSPS = exactly 10 cycles of 1kHz — AC term sums to 0 */
+    /* BLOCK_SIZE=1280 @ 64kSPS = exactly 20 cycles of 1kHz — AC term sums to 0 */
     for (uint32_t i = 0; i < BLOCK_SIZE; i++) {
         float sample = 1.5f + 0.5f * sinf(2.0f * M_PI * 1000.0f * i / SAMPLE_RATE);
         dc_accum_process(&d, sample);

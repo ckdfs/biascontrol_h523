@@ -10,7 +10,7 @@
 |------|--------|
 | `control/src/ctrl_pid.c` | Implement PI controller with anti-windup |
 | `control/src/ctrl_modulator_mzm.c` | Quad error function |
-| `control/src/ctrl_bias.c` | Control loop scheduler (100 Hz) |
+| `control/src/ctrl_bias.c` | Control loop scheduler (10 Hz, multi-block average) |
 | `control/inc/ctrl_modulator.h` | Strategy interface (review/finalize) |
 | `app/src/app_main.c` | State machine: INIT→SELFTEST→IDLE→LOCKING→LOCKED |
 | `app/src/app_config.c` | Default PID gains, pilot amplitude |
@@ -34,7 +34,7 @@
 - [ ] `init()`: configure for 1 bias channel, 1 pilot channel
 
 ### 3. Control Loop Scheduler (`ctrl_bias.c`)
-- [ ] Accumulate Goertzel blocks (10 blocks → 100 Hz control rate)
+- [ ] Accumulate Goertzel blocks (current default: 5 blocks × 20 ms → 10 Hz control rate)
 - [ ] At each control tick:
   1. Read harmonic_data from Goertzel
   2. Call strategy->compute_error()
