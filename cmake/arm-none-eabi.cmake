@@ -1,14 +1,20 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
 
-# ARM GNU Toolchain path (installed via 'brew install --cask gcc-arm-embedded')
-# Auto-detect: search well-known locations, fall back to bare names (PATH lookup)
+# ARM GNU Toolchain path — auto-detect across macOS, Linux, and Windows (MSYS2/winget)
 find_program(ARM_GCC arm-none-eabi-gcc
     PATHS
+        # macOS (Homebrew / ARM installer)
         /Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin
         /Applications/ArmGNUToolchain/*/arm-none-eabi/bin
         /opt/homebrew/bin
         /usr/local/bin
+        # Windows — MSYS2 mingw64
+        C:/msys64/mingw64/bin
+        # Windows — ARM GNU Toolchain installer default paths
+        "C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/13.3 rel1/bin"
+        "C:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.3 rel1/bin"
+        "C:/Program Files/Arm GNU Toolchain arm-none-eabi/13.3 rel1/bin"
     NO_DEFAULT_PATH
 )
 if(NOT ARM_GCC)
@@ -21,12 +27,19 @@ else()
     set(TOOLCHAIN_PREFIX arm-none-eabi-)
 endif()
 
-set(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc)
-set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc)
-set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
-set(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy)
-set(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump)
-set(CMAKE_SIZE         ${TOOLCHAIN_PREFIX}size)
+# On Windows the executables have a .exe suffix; append it when present
+if(WIN32)
+    set(EXE_SUFFIX ".exe")
+else()
+    set(EXE_SUFFIX "")
+endif()
+
+set(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc${EXE_SUFFIX})
+set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc${EXE_SUFFIX})
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++${EXE_SUFFIX})
+set(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy${EXE_SUFFIX})
+set(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump${EXE_SUFFIX})
+set(CMAKE_SIZE         ${TOOLCHAIN_PREFIX}size${EXE_SUFFIX})
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
