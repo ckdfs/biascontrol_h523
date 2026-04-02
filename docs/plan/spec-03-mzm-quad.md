@@ -1,8 +1,21 @@
 # Spec 03 — MZM Quadrature Closed-Loop Control
 
-> Status: **Pending**
+> Status: **In Progress**
 > Goal: Lock MZM at quadrature bias point, first working demo
-> Depends on: spec-02-dsp-pipeline (working Goertzel + pilot)
+> Depends on: spec-02-dsp-pipeline (working Goertzel + pilot) — **COMPLETE**
+
+## Known Hardware Parameters (from spec-02)
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Vπ (VA channel, this MZM) | **5.451 V** | Full-range scan, 4 minima, 3 intervals, 2026-04-02 |
+| Vπ repeatability | ±0.065 V (1σ) | Consistent across 4 scan runs |
+| Pilot amplitude | 100 mVpp (default) | 0.05 V peak at DAC; ×4 subtractor → 200 mVpp at modulator |
+| Scan artifacts | `docs/scans/` | Raw + plots archived |
+
+The quadrature point (H1 maximum, H2 zero-crossing) falls at **Vπ/2 ≈ 2.7 V** from any
+transmission minimum. The PID initial acquisition coarse scan can use Vπ = 5.451 V to
+set its step size and expected lock range.
 
 ## Files to Modify
 

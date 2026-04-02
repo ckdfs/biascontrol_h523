@@ -14,6 +14,8 @@
 #define M_PI 3.14159265358979323846f
 #endif
 
+#define SCAN_MAX_STEPS 201
+
 /* ========================================================================= */
 /*  Application context (singleton)                                          */
 /* ========================================================================= */
@@ -462,6 +464,207 @@ void app_handle_command(const char *cmd)
         }
         /* Future: add other modulator types */
         bias_ctrl_set_modulator(&ctx.bias_ctrl, ctx.config->modulator_type);
+
+    } else if (strncmp(cmd, "set pilot ", 10) == 0) {
+        /* "set pilot <mVpp>" — set pilot tone amplitude (peak-to-peak millivolts).
+         * Default is 100 mVpp (0.05 V peak). Max is limited so bias + pilot stays
+         * within the ±10 V DAC output range. */
+        char *endptr = NULL;
+        float mvpp = strtof(cmd + 10, &endptr);
+        if (endptr == cmd + 10 || mvpp <= 0.0f) {
+            printf("[pilot] usage: set pilot <mVpp>  (e.g. set pilot 100)\r\n");
+        } else {
+            float peak_v = mvpp / 2000.0f;           /* mVpp → V peak */
+            float clamp_v = 10.0f - peak_v;
+            if (clamp_v < 1.0f) {
+                printf("[pilot] amplitude too large (max ~19800 mVpp)\r\n");
+            } else {
+                ctx.config->pilot_amplitude_v = peak_v;
+                pilot_gen_set_amplitude(&ctx.bias_ctrl.pilot, peak_v);
+                ctx.bias_ctrl.pilot_amplitude = peak_v;
+                printf("[pilot] %.0f mVpp (peak=%.1f mV), scan clamp=+/-%.3f V\r\n",
+                       (double)mvpp, (double)(peak_v * 1000.0f), (double)clamp_v);
+            }
+        }
+
+    } else if (strncmp(cmd, "scan vpi", 8) == 0) {
+        /* "scan vpi [fast]" — open-loop V_pi characterization sweep.
+         *
+         * Sweeps bias from -clamp_v to +clamp_v in 0.1 V steps while injecting
+         * the pilot tone, collects DSP_CONTROL_DECIMATION (5) Goertzel blocks per
+         * step (100 ms/step), and prints raw H1 magnitude for each step.
+         * After the sweep, finds H1 peaks by local-maximum detection with parabolic
+         * interpolation and reports V_pi as the mean inter-peak spacing.
+         *
+         * "fast" modifier: single-sided 0 V → +clamp_v scan (~10 s vs ~20 s). */
+        if (ctx.state != APP_STATE_IDLE) {
+            printf("[scan] stop bias control first (state must be IDLE)\r\n");
+            return;
+        }
+
+        bool fast_mode = (strstr(cmd + 8, "fast") != NULL);
+        float pilot_peak = ctx.config->pilot_amplitude_v;
+        float clamp_v    = 10.0f - pilot_peak;
+        float scan_start = fast_mode ? 0.0f : -clamp_v;
+        float scan_stop  = clamp_v;
+        const float step = 0.1f;
+        const int n_blocks_per_step = 3;
+
+        int n_steps = (int)((scan_stop - scan_start) / step) + 1;
+        if (n_steps > SCAN_MAX_STEPS) {
+            n_steps = SCAN_MAX_STEPS;
+        }
+
+        static float scan_bias_buf[SCAN_MAX_STEPS];
+        static float scan_h1_buf[SCAN_MAX_STEPS];
+
+        /* Local DSP state — does not disturb closed-loop ctx.bias_ctrl */
+        pilot_gen_t scan_pilot;
+        pilot_gen_init(&scan_pilot, (float)DSP_PILOT_FREQ_HZ,
+                       (float)DSP_SAMPLE_RATE_HZ, pilot_peak);
+
+        goertzel_state_t g_h1;
+        goertzel_init(&g_h1, (float)DSP_PILOT_FREQ_HZ,
+                      (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+
+        float est_s = (float)n_steps * (float)n_blocks_per_step
+                      * (float)DSP_GOERTZEL_BLOCK_SIZE / (float)DSP_SAMPLE_RATE_HZ;
+        printf("[scan] Vpi scan: %+.2fV to %+.2fV, step=0.1V, "
+               "%d blocks/step, est=%.0fs\r\n",
+               (double)scan_start, (double)scan_stop,
+               n_blocks_per_step, (double)est_s);
+
+        /* Pre-settle at scan start: the DAC was at 0V (restored after previous
+         * scan), so jumping to scan_start may be a large step (~10V).  Give the
+         * bias path time to settle before the first measurement. */
+        dac8568_set_voltage(ctx.config->bias_dac_channel, scan_start);
+        board_delay_ms(100);
+
+        int steps_done = 0;
+        bool drdy_abort = false;
+
+        for (int si = 0; si < n_steps && !drdy_abort; si++) {
+            float bias_v = scan_start + (float)si * step;
+            if (bias_v > scan_stop + step * 0.5f) {
+                break;
+            }
+
+            /* 2 ms settle per step.  The bias path RC (cable + electrode) may
+             * be ~0.5-1 ms; 2 ms gives >4τ settling for a 0.1V step. */
+            dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+            board_delay_ms(2);
+
+            /* Coherently accumulate H1 I/Q across n_blocks_per_step blocks */
+            float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
+
+            for (int b = 0; b < n_blocks_per_step && !drdy_abort; b++) {
+                goertzel_reset(&g_h1);
+                pilot_gen_reset(&scan_pilot);
+
+                for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
+                    /* Write bias + pilot to DAC before reading ADC */
+                    float dac_v = bias_v + pilot_gen_next(&scan_pilot);
+                    dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+
+                    /* Wait for DRDY */
+                    uint32_t t0 = HAL_GetTick();
+                    while (board_adc_drdy_read() != 0) {
+                        if ((HAL_GetTick() - t0) > 5) {
+                            drdy_abort = true;
+                            break;
+                        }
+                    }
+                    if (drdy_abort) { break; }
+
+                    ads131m02_sample_t smp;
+                    if (ads131m02_read_sample(&smp) == 0 && smp.valid) {
+                        float ch0 = ads131m02_code_to_voltage(smp.ch0, ADS131M02_GAIN_1);
+                        goertzel_process_sample(&g_h1, ch0);
+                    }
+                }
+
+                if (!drdy_abort) {
+                    float h1_mag, h1_phase;
+                    goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
+                    h1_i_sum += h1_mag * cosf(h1_phase);
+                    h1_q_sum += h1_mag * sinf(h1_phase);
+                }
+            }
+
+            if (drdy_abort) { break; }
+
+            float h1_avg = sqrtf(h1_i_sum * h1_i_sum + h1_q_sum * h1_q_sum)
+                           / (float)n_blocks_per_step;
+            scan_bias_buf[steps_done] = bias_v;
+            scan_h1_buf[steps_done]   = h1_avg;
+            steps_done++;
+
+            printf("SCAN %+.3f %.6f\r\n", (double)bias_v, (double)h1_avg);
+        }
+
+        /* Restore DAC to 0 V regardless of outcome */
+        dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+
+        if (drdy_abort) {
+            printf("[scan] DRDY timeout — scan aborted at step %d\r\n", steps_done);
+            return;
+        }
+
+        /* ---- Vpi extraction via minimum (zero-crossing) detection ----
+         *
+         * H1 ∝ |sin(π·V/Vpi + φ)|: the minima are deep and sharp (H1 → 0 at
+         * max/min transmission), while the maxima are broad and noisy.
+         * Consecutive minima are spaced exactly Vpi apart, so minimum detection
+         * gives a more accurate and robust Vpi estimate than peak detection. */
+        float h1_max = 0.0f;
+        for (int i = 0; i < steps_done; i++) {
+            if (scan_h1_buf[i] > h1_max) { h1_max = scan_h1_buf[i]; }
+        }
+
+        if (h1_max < 1e-7f) {
+            printf("[scan] no signal detected — check pilot and ADC connection\r\n");
+            return;
+        }
+
+        /* Minimum threshold: below 10% of maximum H1 */
+        float min_threshold = h1_max * 0.1f;
+        float min_v[16];
+        int   n_mins = 0;
+
+        for (int i = 1; i < steps_done - 1 && n_mins < 16; i++) {
+            if (scan_h1_buf[i] < scan_h1_buf[i - 1] &&
+                scan_h1_buf[i] < scan_h1_buf[i + 1] &&
+                scan_h1_buf[i] < min_threshold) {
+                /* Parabolic interpolation for sub-step accuracy */
+                float a = scan_h1_buf[i - 1];
+                float b = scan_h1_buf[i];
+                float c = scan_h1_buf[i + 1];
+                float denom = a - 2.0f * b + c;
+                float offset = (fabsf(denom) > 1e-12f) ? (0.5f * (a - c) / denom) : 0.0f;
+                if (offset < -1.0f) { offset = -1.0f; }
+                if (offset >  1.0f) { offset =  1.0f; }
+                min_v[n_mins++] = scan_bias_buf[i] + offset * step;
+            }
+        }
+
+        if (n_mins == 0) {
+            printf("[scan] no minima found — scan range may be less than Vpi\r\n");
+        } else if (n_mins == 1) {
+            printf("[scan] 1 minimum at %+.3fV — widen range for Vpi measurement\r\n",
+                   (double)min_v[0]);
+        } else {
+            float vpi_sum = 0.0f;
+            for (int i = 0; i < n_mins - 1; i++) {
+                vpi_sum += min_v[i + 1] - min_v[i];
+            }
+            float vpi = vpi_sum / (float)(n_mins - 1);
+
+            printf("[scan] minima:");
+            for (int i = 0; i < n_mins; i++) {
+                printf(" %+.3fV", (double)min_v[i]);
+            }
+            printf("\r\n[scan] Vpi = %.3fV (%d intervals)\r\n",
+                   (double)vpi, n_mins - 1);
+        }
     }
-    /* TODO: Add more commands (set kp, set ki, set pilot, sweep, etc.) */
 }

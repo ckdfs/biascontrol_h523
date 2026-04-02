@@ -10,8 +10,8 @@
 |------|--------|-------------|
 | [spec-00-hardware](spec-00-hardware.md) | **Reference** | Hardware pin mapping, signal chain, CubeMX config, NVIC, DMA |
 | [spec-01-bringup](spec-01-bringup.md) | **COMPLETE** ✅ | Board bring-up: DAC8568, ADS131M02, USART1 drivers |
-| [spec-02-dsp-pipeline](spec-02-dsp-pipeline.md) | **In Progress** | Pilot tone generation + Goertzel harmonic extraction |
-| [spec-03-mzm-quad](spec-03-mzm-quad.md) | Pending | MZM quadrature closed-loop control |
+| [spec-02-dsp-pipeline](spec-02-dsp-pipeline.md) | **COMPLETE** ✅ | Pilot tone + Goertzel extraction + Vπ characterization |
+| [spec-03-mzm-quad](spec-03-mzm-quad.md) | **In Progress** | MZM quadrature closed-loop control |
 | [spec-04-robustness](spec-04-robustness.md) | Pending | Multi-bias-point, robustness, tuning interface |
 | [spec-05-multi-modulator](spec-05-multi-modulator.md) | Future | DDMZM, DPMZM, DPQPSK, PM support |
 

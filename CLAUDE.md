@@ -137,6 +137,16 @@ make && ctest
 - If `cmake --build build-test` pulls in embedded targets and fails on the host assembler, run
   the native test binary directly (for example `build-test/test_goertzel`).
 
+### scan vpi Tuning (verified 2026-04-02)
+- **3 blocks/step** is the validated sweet spot: 60 ms measurement window + 2 ms per-step
+  settle + 100 ms pre-settle for the initial large DAC jump.
+  - 1 block/step: too fast, settling artifacts create false minima near 0 V.
+  - 5 blocks/step: too slow (~21 s full), MZM thermal drift introduces scan asymmetry.
+- Use **minimum detection** (not peak detection) for Vπ extraction — H1 zeros are sharp
+  and deep; H1 peaks are broad and noisy.
+- Minimum threshold: 10% of max H1 observed in the scan.
+- Measured Vπ for the current MZM on VA channel: **5.451 V** (±0.065 V, 4 runs).
+
 ## Critical Invariants
 - Goertzel block size N must ensure integer cycles of pilot frequency (no spectral leakage)
 - Longer coherent Goertzel blocks are preferred for weak harmonic measurements, as long as the
