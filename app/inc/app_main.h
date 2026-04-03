@@ -37,17 +37,18 @@ const app_context_t *app_get_context(void);
  * Handle a command from the UART debug interface.
  * Called when a complete command line is received.
  *
- * Supported commands (Phase 4):
- *   "start"           — begin bias control
- *   "stop"            — stop bias control
- *   "status"          — print current state, harmonics, bias voltage
- *   "set mod <type>"  — change modulator type (mzm, ddmzm, ...)
- *   "set bp <point>"  — change target bias point (quad, max, min)
- *   "set kp <value>"  — change Kp gain
- *   "set ki <value>"  — change Ki gain
- *   "set pilot <mV>"  — change pilot amplitude
- *   "set bias <V>"    — manually set bias voltage
- *   "sweep"           — perform coarse sweep
+ * Supported commands:
+ *   "start"              — begin closed-loop bias control
+ *   "stop"               — stop bias control
+ *   "status"             — print state, bias voltage, lock status
+ *   "set mod <type>"     — change modulator type (mzm, ...)
+ *   "set bp <point>"     — change target bias point (quad, max, min)
+ *   "set pilot <mVpp>"   — set pilot amplitude in mV peak-to-peak (e.g. 100)
+ *   "dac <V>"            — set DAC channel A to voltage (static, no pilot)
+ *   "dac mid"            — set all DAC channels to 0 V
+ *   "adc [N]"            — read N ADC samples (default 64), print raw values
+ *   "goertzel [N]"       — run N Goertzel blocks, print H1/H2/DC statistics
+ *   "scan vpi [fast]"    — V_pi characterization sweep; "fast" = single-sided
  *
  * @param cmd  Null-terminated command string
  */
