@@ -491,12 +491,13 @@ void app_handle_command(const char *cmd)
         /* "scan vpi [fast]" — open-loop V_pi characterization sweep.
          *
          * Sweeps bias from -clamp_v to +clamp_v in 0.1 V steps while injecting
-         * the pilot tone, collects DSP_CONTROL_DECIMATION (5) Goertzel blocks per
-         * step (100 ms/step), and prints raw H1 magnitude for each step.
-         * After the sweep, finds H1 peaks by local-maximum detection with parabolic
-         * interpolation and reports V_pi as the mean inter-peak spacing.
+         * the pilot tone, collects 3 Goertzel blocks per step (60 ms window +
+         * 2 ms settle per step), and prints raw H1 magnitude for each step.
+         * After the sweep, finds H1 minima by local-minimum detection with 10%
+         * threshold and parabolic interpolation, then reports V_pi as the mean
+         * inter-minimum spacing.
          *
-         * "fast" modifier: single-sided 0 V → +clamp_v scan (~10 s vs ~20 s). */
+         * "fast" modifier: single-sided 0 V → +clamp_v scan (~6 s vs ~12 s). */
         if (ctx.state != APP_STATE_IDLE) {
             printf("[scan] stop bias control first (state must be IDLE)\r\n");
             return;
