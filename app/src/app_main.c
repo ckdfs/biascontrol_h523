@@ -5,16 +5,28 @@
 #include "drv_ads131m02.h"
 #include "dsp_goertzel.h"
 #include "dsp_types.h"
+#include "ctrl_modulator_mzm.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846f
 #endif
 
 #define SCAN_MAX_STEPS 201
+#define CAL_VERIFY_BLOCKS 5
+
+typedef struct {
+    bool valid;
+    float vpi_v;
+    float null_v;
+    float peak_v;
+    float quad_pos_v;
+    float quad_neg_v;
+} bias_cal_result_t;
 
 /* ========================================================================= */
 /*  Application context (singleton)                                          */
@@ -51,6 +63,7 @@ const char *app_state_name(app_state_t state)
 static void transition_to(app_state_t new_state)
 {
     ctx.state = new_state;
+    ctx.tick_ms = HAL_GetTick();
     ctx.state_enter_ms = ctx.tick_ms;
 }
 
@@ -79,6 +92,430 @@ static void adc_drdy_callback(const ads131m02_sample_t *sample)
 }
 
 /* ========================================================================= */
+/*  Bias calibration helpers                                                 */
+/* ========================================================================= */
+
+static float signed_harmonic(float mag, float phase)
+{
+    return mag * cosf(phase);
+}
+
+static bool measure_harmonics_at_bias(float bias_v, int n_blocks, harmonic_data_t *out)
+{
+    pilot_gen_t pilot;
+    goertzel_state_t g_h1, g_h2;
+
+    if (out == NULL || n_blocks <= 0) {
+        return false;
+    }
+
+    pilot_gen_init(&pilot, (float)DSP_PILOT_FREQ_HZ,
+                   (float)DSP_SAMPLE_RATE_HZ, ctx.config->pilot_amplitude_v);
+    goertzel_init(&g_h1, (float)DSP_PILOT_FREQ_HZ,
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+    goertzel_init(&g_h2, (float)(DSP_PILOT_FREQ_HZ * 2),
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+
+    float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
+    float h2_i_sum = 0.0f, h2_q_sum = 0.0f;
+    float dc_sum = 0.0f;
+    uint32_t dc_count = 0;
+
+    dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+    board_delay_ms(5);
+
+    for (int b = 0; b < n_blocks; b++) {
+        goertzel_reset(&g_h1);
+        goertzel_reset(&g_h2);
+        pilot_gen_reset(&pilot);
+
+        for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
+            float dac_v = bias_v + pilot_gen_next(&pilot);
+            dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+
+            uint32_t t0 = HAL_GetTick();
+            while (board_adc_drdy_read() != 0) {
+                if ((HAL_GetTick() - t0) > 5) {
+                    dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+                    return false;
+                }
+            }
+
+            ads131m02_sample_t smp;
+            if (ads131m02_read_sample(&smp) == 0 && smp.valid) {
+                float ch0 = ads131m02_code_to_voltage(smp.ch0, ADS131M02_GAIN_1);
+                float ch1 = ads131m02_code_to_voltage(smp.ch1, ADS131M02_GAIN_1);
+                goertzel_process_sample(&g_h1, ch0);
+                goertzel_process_sample(&g_h2, ch0);
+                dc_sum += ch1;
+                dc_count++;
+            }
+        }
+
+        float h1_mag, h1_phase, h2_mag, h2_phase;
+        goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
+        goertzel_get_result(&g_h2, &h2_mag, &h2_phase);
+        h1_i_sum += h1_mag * cosf(h1_phase);
+        h1_q_sum += h1_mag * sinf(h1_phase);
+        h2_i_sum += h2_mag * cosf(h2_phase);
+        h2_q_sum += h2_mag * sinf(h2_phase);
+    }
+
+    dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+
+    {
+        float inv_blocks = 1.0f / (float)n_blocks;
+        float h1_i = h1_i_sum * inv_blocks;
+        float h1_q = h1_q_sum * inv_blocks;
+        float h2_i = h2_i_sum * inv_blocks;
+        float h2_q = h2_q_sum * inv_blocks;
+        out->h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
+        out->h1_phase = atan2f(h1_q, h1_i);
+        out->h2_magnitude = sqrtf(h2_i * h2_i + h2_q * h2_q);
+        out->h2_phase = atan2f(h2_q, h2_i);
+        out->dc_power = (dc_count > 0) ? (dc_sum / (float)dc_count) : 0.0f;
+    }
+
+    return true;
+}
+
+static float interp_linear(const float *x, const float *y, int n, float target)
+{
+    if (n <= 0) {
+        return 0.0f;
+    }
+    if (target <= x[0]) {
+        return y[0];
+    }
+    if (target >= x[n - 1]) {
+        return y[n - 1];
+    }
+
+    for (int i = 0; i < n - 1; i++) {
+        if (target >= x[i] && target <= x[i + 1]) {
+            float dx = x[i + 1] - x[i];
+            if (fabsf(dx) < 1e-9f) {
+                return y[i];
+            }
+            float t = (target - x[i]) / dx;
+            return y[i] + t * (y[i + 1] - y[i]);
+        }
+    }
+
+    return y[n - 1];
+}
+
+static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan_lines)
+{
+    const float pilot_peak = ctx.config->pilot_amplitude_v;
+    const float clamp_v = 10.0f - pilot_peak;
+    const float scan_start = -clamp_v;
+    const float scan_stop = clamp_v;
+    const float step = 0.1f;
+    const int n_blocks_per_step = 3;
+
+    float scan_bias_buf[SCAN_MAX_STEPS];
+    float scan_h1_mag_buf[SCAN_MAX_STEPS];
+    float scan_dc_buf[SCAN_MAX_STEPS];
+
+    pilot_gen_t scan_pilot;
+    pilot_gen_init(&scan_pilot, (float)DSP_PILOT_FREQ_HZ,
+                   (float)DSP_SAMPLE_RATE_HZ, pilot_peak);
+
+    goertzel_state_t g_h1;
+    goertzel_init(&g_h1, (float)DSP_PILOT_FREQ_HZ,
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+
+    int n_steps = (int)((scan_stop - scan_start) / step) + 1;
+    if (n_steps > SCAN_MAX_STEPS) {
+        n_steps = SCAN_MAX_STEPS;
+    }
+
+    printf("[cal] bias calibration: %+.2fV to %+.2fV, step=0.1V, %d blocks/step\r\n",
+           (double)scan_start, (double)scan_stop, n_blocks_per_step);
+
+    dac8568_set_voltage(ctx.config->bias_dac_channel, scan_start);
+    board_delay_ms(100);
+
+    int steps_done = 0;
+    bool drdy_abort = false;
+    for (int si = 0; si < n_steps && !drdy_abort; si++) {
+        float bias_v = scan_start + (float)si * step;
+        if (bias_v > scan_stop + step * 0.5f) {
+            break;
+        }
+
+        dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+        board_delay_ms(2);
+
+        float h1_i_sum = 0.0f;
+        float h1_q_sum = 0.0f;
+        float dc_sum = 0.0f;
+        uint32_t dc_count = 0;
+
+        for (int b = 0; b < n_blocks_per_step && !drdy_abort; b++) {
+            goertzel_reset(&g_h1);
+            pilot_gen_reset(&scan_pilot);
+
+            for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
+                float dac_v = bias_v + pilot_gen_next(&scan_pilot);
+                dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+
+                uint32_t t0 = HAL_GetTick();
+                while (board_adc_drdy_read() != 0) {
+                    if ((HAL_GetTick() - t0) > 5) {
+                        drdy_abort = true;
+                        break;
+                    }
+                }
+                if (drdy_abort) {
+                    break;
+                }
+
+                ads131m02_sample_t smp;
+                if (ads131m02_read_sample(&smp) == 0 && smp.valid) {
+                    float ch0 = ads131m02_code_to_voltage(smp.ch0, ADS131M02_GAIN_1);
+                    float ch1 = ads131m02_code_to_voltage(smp.ch1, ADS131M02_GAIN_1);
+                    goertzel_process_sample(&g_h1, ch0);
+                    dc_sum += ch1;
+                    dc_count++;
+                }
+            }
+
+            if (!drdy_abort) {
+                float h1_mag, h1_phase;
+                goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
+                h1_i_sum += h1_mag * cosf(h1_phase);
+                h1_q_sum += h1_mag * sinf(h1_phase);
+            }
+        }
+
+        if (drdy_abort) {
+            break;
+        }
+
+        float inv_blocks = 1.0f / (float)n_blocks_per_step;
+        float h1_i = h1_i_sum * inv_blocks;
+        float h1_q = h1_q_sum * inv_blocks;
+        float h1_mag = sqrtf(h1_i * h1_i + h1_q * h1_q);
+        float h1_phase = atan2f(h1_q, h1_i);
+        float h1_signed = h1_mag * cosf(h1_phase);
+        float dc_mean = (dc_count > 0) ? (dc_sum / (float)dc_count) : 0.0f;
+
+        scan_bias_buf[steps_done] = bias_v;
+        scan_h1_mag_buf[steps_done] = h1_mag;
+        scan_dc_buf[steps_done] = dc_mean;
+        steps_done++;
+
+        if (print_scan_lines) {
+            printf("CALSCAN %+.3f %.6f %.6f %.6f\r\n",
+                   (double)bias_v, (double)h1_mag, (double)h1_signed, (double)dc_mean);
+        }
+    }
+
+    dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+
+    if (drdy_abort || steps_done < 4) {
+        printf("[cal] scan failed%s\r\n", drdy_abort ? " (DRDY timeout)" : "");
+        return false;
+    }
+
+    float h1_max = 0.0f;
+    for (int i = 0; i < steps_done; i++) {
+        if (scan_h1_mag_buf[i] > h1_max) {
+            h1_max = scan_h1_mag_buf[i];
+        }
+    }
+    if (h1_max < 1e-7f) {
+        printf("[cal] no H1 signal detected\r\n");
+        return false;
+    }
+
+    float min_v[16];
+    float min_dc[16];
+    int n_mins = 0;
+    float min_threshold = h1_max * 0.1f;
+    for (int i = 1; i < steps_done - 1 && n_mins < 16; i++) {
+        if (scan_h1_mag_buf[i] < scan_h1_mag_buf[i - 1] &&
+            scan_h1_mag_buf[i] < scan_h1_mag_buf[i + 1] &&
+            scan_h1_mag_buf[i] < min_threshold) {
+            float a = scan_h1_mag_buf[i - 1];
+            float b = scan_h1_mag_buf[i];
+            float c = scan_h1_mag_buf[i + 1];
+            float denom = a - 2.0f * b + c;
+            float offset = (fabsf(denom) > 1e-12f) ? (0.5f * (a - c) / denom) : 0.0f;
+            if (offset < -1.0f) offset = -1.0f;
+            if (offset > 1.0f)  offset = 1.0f;
+            min_v[n_mins] = scan_bias_buf[i] + offset * step;
+            min_dc[n_mins] = interp_linear(scan_bias_buf, scan_dc_buf, steps_done, min_v[n_mins]);
+            n_mins++;
+        }
+    }
+
+    if (n_mins < 2) {
+        printf("[cal] insufficient H1 minima found\r\n");
+        return false;
+    }
+
+    float vpi_sum = 0.0f;
+    for (int i = 0; i < n_mins - 1; i++) {
+        vpi_sum += min_v[i + 1] - min_v[i];
+    }
+    result->vpi_v = vpi_sum / (float)(n_mins - 1);
+
+    int central_pair = 0;
+    float best_mid_abs = FLT_MAX;
+    for (int i = 0; i < n_mins - 1; i++) {
+        float mid = 0.5f * (min_v[i] + min_v[i + 1]);
+        if (fabsf(mid) < best_mid_abs) {
+            best_mid_abs = fabsf(mid);
+            central_pair = i;
+        }
+    }
+
+    if (min_dc[central_pair] < min_dc[central_pair + 1]) {
+        result->null_v = min_v[central_pair];
+        result->peak_v = min_v[central_pair + 1];
+    } else {
+        result->peak_v = min_v[central_pair];
+        result->null_v = min_v[central_pair + 1];
+    }
+
+    result->quad_pos_v = 0.0f;
+    result->quad_neg_v = 0.0f;
+    bool quad_pos_valid = false;
+    bool quad_neg_valid = false;
+    for (int i = 0; i < n_mins - 1; i++) {
+        float mid = 0.5f * (min_v[i] + min_v[i + 1]);
+        bool rising = (min_dc[i + 1] > min_dc[i]);
+        if (rising) {
+            if (!quad_pos_valid || fabsf(mid) < fabsf(result->quad_pos_v)) {
+                result->quad_pos_v = mid;
+                quad_pos_valid = true;
+            }
+        } else {
+            if (!quad_neg_valid || fabsf(mid) < fabsf(result->quad_neg_v)) {
+                result->quad_neg_v = mid;
+                quad_neg_valid = true;
+            }
+        }
+    }
+
+    if (!quad_pos_valid) {
+        result->quad_pos_v = 0.5f * (result->null_v + result->peak_v);
+    }
+    if (!quad_neg_valid) {
+        result->quad_neg_v = result->quad_pos_v - result->vpi_v;
+    }
+
+    {
+        harmonic_data_t h_null = {0}, h_peak = {0}, h_quad_pos = {0}, h_quad_neg = {0};
+        bool ok_null = measure_harmonics_at_bias(result->null_v, CAL_VERIFY_BLOCKS, &h_null);
+        bool ok_peak = measure_harmonics_at_bias(result->peak_v, CAL_VERIFY_BLOCKS, &h_peak);
+        bool ok_qp = measure_harmonics_at_bias(result->quad_pos_v, CAL_VERIFY_BLOCKS, &h_quad_pos);
+        bool ok_qn = measure_harmonics_at_bias(result->quad_neg_v, CAL_VERIFY_BLOCKS, &h_quad_neg);
+
+        if (ok_null && ok_peak && h_peak.dc_power < h_null.dc_power) {
+            float tmp = result->null_v;
+            result->null_v = result->peak_v;
+            result->peak_v = tmp;
+
+            {
+                harmonic_data_t htmp = h_null;
+                h_null = h_peak;
+                h_peak = htmp;
+            }
+        }
+
+        if (ok_qp && ok_qn) {
+            float h1s_qp = signed_harmonic(h_quad_pos.h1_magnitude, h_quad_pos.h1_phase);
+            float h1s_qn = signed_harmonic(h_quad_neg.h1_magnitude, h_quad_neg.h1_phase);
+            if (h1s_qp < h1s_qn) {
+                float tmp = result->quad_pos_v;
+                result->quad_pos_v = result->quad_neg_v;
+                result->quad_neg_v = tmp;
+            }
+        }
+
+        if (ok_null) {
+            printf("[cal] null test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                   (double)result->null_v,
+                   (double)signed_harmonic(h_null.h1_magnitude, h_null.h1_phase),
+                   (double)signed_harmonic(h_null.h2_magnitude, h_null.h2_phase),
+                   (double)h_null.dc_power);
+        }
+        if (ok_peak) {
+            printf("[cal] peak test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                   (double)result->peak_v,
+                   (double)signed_harmonic(h_peak.h1_magnitude, h_peak.h1_phase),
+                   (double)signed_harmonic(h_peak.h2_magnitude, h_peak.h2_phase),
+                   (double)h_peak.dc_power);
+        }
+        if (ok_qp) {
+            printf("[cal] quad+ test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                   (double)result->quad_pos_v,
+                   (double)signed_harmonic(h_quad_pos.h1_magnitude, h_quad_pos.h1_phase),
+                   (double)signed_harmonic(h_quad_pos.h2_magnitude, h_quad_pos.h2_phase),
+                   (double)h_quad_pos.dc_power);
+        }
+        if (ok_qn) {
+            printf("[cal] quad- test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                   (double)result->quad_neg_v,
+                   (double)signed_harmonic(h_quad_neg.h1_magnitude, h_quad_neg.h1_phase),
+                   (double)signed_harmonic(h_quad_neg.h2_magnitude, h_quad_neg.h2_phase),
+                   (double)h_quad_neg.dc_power);
+        }
+    }
+
+    result->valid = true;
+    return true;
+}
+
+static void commit_bias_calibration(const bias_cal_result_t *result)
+{
+    ctx.config->bias_cal_valid = result->valid;
+    ctx.config->vpi_v = result->vpi_v;
+    ctx.config->bias_null_v = result->null_v;
+    ctx.config->bias_peak_v = result->peak_v;
+    ctx.config->bias_quad_pos_v = result->quad_pos_v;
+    ctx.config->bias_quad_neg_v = result->quad_neg_v;
+    mzm_set_calibration(result->valid,
+                        result->vpi_v,
+                        result->null_v,
+                        result->peak_v,
+                        result->quad_pos_v,
+                        result->quad_neg_v);
+
+    printf("[cal] Vpi=%.3fV  null=%+.3fV  peak=%+.3fV  quad+=%+.3fV  quad-=%+.3fV\r\n",
+           (double)ctx.config->vpi_v,
+           (double)ctx.config->bias_null_v,
+           (double)ctx.config->bias_peak_v,
+           (double)ctx.config->bias_quad_pos_v,
+           (double)ctx.config->bias_quad_neg_v);
+}
+
+static float seed_bias_from_calibration(void)
+{
+    if (!ctx.config->bias_cal_valid || ctx.config->vpi_v <= 0.0f) {
+        return ctx.config->initial_bias_v;
+    }
+
+    switch (ctx.config->target_point) {
+    case BIAS_POINT_MIN:
+        return ctx.config->bias_null_v;
+    case BIAS_POINT_MAX:
+        return ctx.config->bias_peak_v;
+    case BIAS_POINT_QUAD:
+        return ctx.config->bias_quad_pos_v;
+    case BIAS_POINT_CUSTOM:
+        return ctx.config->bias_null_v +
+               ctx.config->vpi_v * (ctx.config->target_phase_rad / (float)M_PI);
+    default:
+        return ctx.config->bias_quad_pos_v;
+    }
+}
+
+/* ========================================================================= */
 /*  State handlers                                                           */
 /* ========================================================================= */
 
@@ -93,6 +530,12 @@ static void state_init(void)
     /* Load or set default configuration */
     app_config_load();
     ctx.config = app_config_get();
+    mzm_set_calibration(ctx.config->bias_cal_valid,
+                        ctx.config->vpi_v,
+                        ctx.config->bias_null_v,
+                        ctx.config->bias_peak_v,
+                        ctx.config->bias_quad_pos_v,
+                        ctx.config->bias_quad_neg_v);
 
     transition_to(APP_STATE_HW_SELFTEST);
 }
@@ -137,9 +580,17 @@ static void state_idle(void)
 
 static void state_sweeping(void)
 {
-    /* Perform coarse bias sweep */
-    float best_v = bias_ctrl_coarse_sweep(&ctx.bias_ctrl);
-    ctx.bias_ctrl.bias_voltage = best_v;
+    if (!ctx.config->bias_cal_valid) {
+        bias_cal_result_t result = {0};
+        if (!run_bias_calibration_scan(&result, false)) {
+            transition_to(APP_STATE_IDLE);
+            return;
+        }
+        commit_bias_calibration(&result);
+    }
+
+    /* Seed the controller near the calibrated working-point anchor. */
+    ctx.bias_ctrl.bias_voltage = seed_bias_from_calibration();
 
     /* Start closed-loop control */
     bias_ctrl_start(&ctx.bias_ctrl);
@@ -256,6 +707,8 @@ void app_handle_command(const char *cmd)
     if (strcmp(cmd, "start") == 0) {
         if (ctx.state == APP_STATE_IDLE) {
             /* Initialize bias controller with current config */
+            mzm_set_custom_phase(ctx.config->target_phase_rad);
+            mzm_set_pilot_amplitude(ctx.config->pilot_amplitude_v);
             bias_ctrl_init(&ctx.bias_ctrl,
                            ctx.config->modulator_type,
                            ctx.config->target_point,
@@ -270,17 +723,59 @@ void app_handle_command(const char *cmd)
         ads131m02_stop_continuous();
         transition_to(APP_STATE_IDLE);
     } else if (strcmp(cmd, "status") == 0) {
+        const harmonic_data_t *h = bias_ctrl_get_harmonics(&ctx.bias_ctrl);
         printf("State: %s\r\n", app_state_name(ctx.state));
         printf("Bias:  %.3f V\r\n", (double)bias_ctrl_get_bias_voltage(&ctx.bias_ctrl));
         printf("Lock:  %s\r\n", bias_ctrl_is_locked(&ctx.bias_ctrl) ? "YES" : "NO");
+        if (ctx.config->bias_cal_valid) {
+            printf("Cal:   Vpi=%.3fV  null=%+.3fV  peak=%+.3fV  quad+=%+.3fV\r\n",
+                   (double)ctx.config->vpi_v,
+                   (double)ctx.config->bias_null_v,
+                   (double)ctx.config->bias_peak_v,
+                   (double)ctx.config->bias_quad_pos_v);
+        } else {
+            printf("Cal:   INVALID\r\n");
+        }
+        if (ctx.state == APP_STATE_LOCKING || ctx.state == APP_STATE_LOCKED) {
+            float dc = h->dc_power > 1e-6f ? h->dc_power : 1e-6f;
+            printf("H1:    %.4fV (%.1fdBc vs DC)  phase=%.3frad\r\n",
+                   (double)h->h1_magnitude,
+                   (double)(20.0f * log10f(h->h1_magnitude / dc + 1e-9f)),
+                   (double)h->h1_phase);
+            printf("H2:    %.4fV (%.1fdBc vs DC)  phase=%.3frad\r\n",
+                   (double)h->h2_magnitude,
+                   (double)(20.0f * log10f(h->h2_magnitude / dc + 1e-9f)),
+                   (double)h->h2_phase);
+            printf("DC:    %.4fV\r\n", (double)h->dc_power);
+        }
     } else if (strncmp(cmd, "set bp ", 7) == 0) {
         const char *bp = cmd + 7;
         if (strcmp(bp, "quad") == 0) {
             ctx.config->target_point = BIAS_POINT_QUAD;
+            ctx.config->target_phase_rad = (float)M_PI / 2.0f;
         } else if (strcmp(bp, "max") == 0) {
             ctx.config->target_point = BIAS_POINT_MAX;
+            ctx.config->target_phase_rad = (float)M_PI;
         } else if (strcmp(bp, "min") == 0) {
             ctx.config->target_point = BIAS_POINT_MIN;
+            ctx.config->target_phase_rad = 0.0f;
+        } else if (strncmp(bp, "custom ", 7) == 0) {
+            /* "set bp custom <degrees>"  — arbitrary φ_code phase (0–180°),
+             * where 0°=MIN, 90°=QUAD, 180°=MAX. */
+            char *endptr = NULL;
+            float deg = strtof(bp + 7, &endptr);
+            if (endptr != bp + 7 && deg >= 0.0f && deg <= 180.0f) {
+                ctx.config->target_point = BIAS_POINT_CUSTOM;
+                ctx.config->target_phase_rad = deg * ((float)M_PI / 180.0f);
+                mzm_set_custom_phase(ctx.config->target_phase_rad);
+                printf("[bp] custom %.1f deg (%.4f rad)\r\n",
+                       (double)deg, (double)ctx.config->target_phase_rad);
+            } else {
+                printf("[bp] usage: set bp custom <degrees>  (0–180)\r\n");
+            }
+        }
+        if (ctx.config->target_point != BIAS_POINT_CUSTOM) {
+            printf("[bp] %s\r\n", bias_point_name(ctx.config->target_point));
         }
         bias_ctrl_set_target(&ctx.bias_ctrl, ctx.config->target_point);
     } else if (strcmp(cmd, "dac mid") == 0) {
@@ -316,7 +811,14 @@ void app_handle_command(const char *cmd)
          * each printf line takes ~4 ms at 115200 baud while the ADC fires every
          * 15.6 µs at 64 kSPS, causing ~256 samples to be skipped per print.
          *
-         * At 64 kSPS, 64 samples cover 1 ms — one full cycle of a 1 kHz sine. */
+         * At 64 kSPS, 64 samples cover 1 ms — one full cycle of a 1 kHz sine.
+         *
+         * NOTE: Not available while controller is active (same SPI2 conflict as goertzel). */
+        if (ctx.state == APP_STATE_LOCKING || ctx.state == APP_STATE_LOCKED) {
+            printf("[adc] not available while controller is running (state=%s)\r\n",
+                   app_state_name(ctx.state));
+            goto cmd_done;
+        }
         int n = 64;
         if (cmd[3] == ' ' && cmd[4] != '\0') {
             int parsed = atoi(cmd + 4);
@@ -361,7 +863,17 @@ void app_handle_command(const char *cmd)
         /* "goertzel [N]" — run N Goertzel blocks (default 1), print H1/H2/DC per block.
          * CH0 (AC): extracts f0=1 kHz (H1) and 2f0=2 kHz (H2) via Goertzel.
          * CH1 (DC): block mean via dc_accum.
-         * Block size = DSP_GOERTZEL_BLOCK_SIZE (10 full pilot cycles = 10 ms). */
+         * Block size = DSP_GOERTZEL_BLOCK_SIZE (10 full pilot cycles = 10 ms).
+         *
+         * NOTE: Cannot run while bias controller is active — both this command and
+         * the continuous-mode ISR use SPI2; running them concurrently corrupts
+         * transfers and hangs the bus. */
+        if (ctx.state == APP_STATE_LOCKING || ctx.state == APP_STATE_LOCKED) {
+            printf("[goertzel] not available while controller is running (state=%s)\r\n"
+                   "  use 'stop' first, or 'status' to read last_harmonics\r\n",
+                   app_state_name(ctx.state));
+            goto cmd_done;
+        }
         int n_blocks = 1;
         if (cmd[8] == ' ' && cmd[9] != '\0') {
             int parsed = atoi(cmd + 9);
@@ -482,11 +994,165 @@ void app_handle_command(const char *cmd)
                 ctx.config->pilot_amplitude_v = peak_v;
                 pilot_gen_set_amplitude(&ctx.bias_ctrl.pilot, peak_v);
                 ctx.bias_ctrl.pilot_amplitude = peak_v;
+                mzm_set_pilot_amplitude(peak_v);
                 printf("[pilot] %.0f mVpp (peak=%.1f mV), scan clamp=+/-%.3f V\r\n",
                        (double)mvpp, (double)(peak_v * 1000.0f), (double)clamp_v);
             }
         }
 
+    } else if (strncmp(cmd, "scan harmonics", 14) == 0) {
+        /* "scan harmonics [fast] [blocks]" — open-loop harmonic scan for offline analysis.
+         *
+         * Prints one machine-readable line per step:
+         *   HSCAN <bias_v> <h1_mag> <h1_phase> <h1_signed>
+         *         <h2_mag> <h2_phase> <h2_signed> <dc_mean>
+         *
+         * The pilot is injected during the scan, but closed-loop bias control
+         * remains stopped; this is a pure open-loop characterization sweep.
+         */
+        if (ctx.state != APP_STATE_IDLE) {
+            printf("[scan] stop bias control first (state must be IDLE)\r\n");
+            return;
+        }
+
+        bool fast_mode = (strstr(cmd + 14, "fast") != NULL);
+        int n_blocks_per_step = 3;
+        {
+            const char *p = cmd + 14;
+            while (*p != '\0') {
+                if (*p >= '0' && *p <= '9') {
+                    int parsed = atoi(p);
+                    if (parsed >= 1 && parsed <= 20) {
+                        n_blocks_per_step = parsed;
+                        break;
+                    }
+                }
+                p++;
+            }
+        }
+        float pilot_peak = ctx.config->pilot_amplitude_v;
+        float clamp_v    = 10.0f - pilot_peak;
+        float scan_start = fast_mode ? 0.0f : -clamp_v;
+        float scan_stop  = clamp_v;
+        const float step = 0.1f;
+
+        int n_steps = (int)((scan_stop - scan_start) / step) + 1;
+        if (n_steps > SCAN_MAX_STEPS) {
+            n_steps = SCAN_MAX_STEPS;
+        }
+
+        pilot_gen_t scan_pilot;
+        pilot_gen_init(&scan_pilot, (float)DSP_PILOT_FREQ_HZ,
+                       (float)DSP_SAMPLE_RATE_HZ, pilot_peak);
+
+        goertzel_state_t g_h1, g_h2;
+        goertzel_init(&g_h1, (float)DSP_PILOT_FREQ_HZ,
+                      (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+        goertzel_init(&g_h2, (float)(DSP_PILOT_FREQ_HZ * 2),
+                      (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+
+        float est_s = (float)n_steps * (float)n_blocks_per_step
+                      * (float)DSP_GOERTZEL_BLOCK_SIZE / (float)DSP_SAMPLE_RATE_HZ;
+        printf("[scan] harmonic scan: %+.2fV to %+.2fV, step=0.1V, "
+               "%d blocks/step, est=%.0fs\r\n",
+               (double)scan_start, (double)scan_stop,
+               n_blocks_per_step, (double)est_s);
+
+        dac8568_set_voltage(ctx.config->bias_dac_channel, scan_start);
+        board_delay_ms(100);
+
+        bool drdy_abort = false;
+        for (int si = 0; si < n_steps && !drdy_abort; si++) {
+            float bias_v = scan_start + (float)si * step;
+            if (bias_v > scan_stop + step * 0.5f) {
+                break;
+            }
+
+            dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+            board_delay_ms(2);
+
+            float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
+            float h2_i_sum = 0.0f, h2_q_sum = 0.0f;
+            float dc_sum   = 0.0f;
+            uint32_t dc_count = 0;
+
+            for (int b = 0; b < n_blocks_per_step && !drdy_abort; b++) {
+                goertzel_reset(&g_h1);
+                goertzel_reset(&g_h2);
+                pilot_gen_reset(&scan_pilot);
+
+                for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
+                    float dac_v = bias_v + pilot_gen_next(&scan_pilot);
+                    dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+
+                    uint32_t t0 = HAL_GetTick();
+                    while (board_adc_drdy_read() != 0) {
+                        if ((HAL_GetTick() - t0) > 5) {
+                            drdy_abort = true;
+                            break;
+                        }
+                    }
+                    if (drdy_abort) { break; }
+
+                    ads131m02_sample_t smp;
+                    if (ads131m02_read_sample(&smp) == 0 && smp.valid) {
+                        float ch0 = ads131m02_code_to_voltage(smp.ch0, ADS131M02_GAIN_1);
+                        float ch1 = ads131m02_code_to_voltage(smp.ch1, ADS131M02_GAIN_1);
+                        goertzel_process_sample(&g_h1, ch0);
+                        goertzel_process_sample(&g_h2, ch0);
+                        dc_sum += ch1;
+                        dc_count++;
+                    }
+                }
+
+                if (!drdy_abort) {
+                    float h1_mag, h1_phase, h2_mag, h2_phase;
+                    goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
+                    goertzel_get_result(&g_h2, &h2_mag, &h2_phase);
+                    h1_i_sum += h1_mag * cosf(h1_phase);
+                    h1_q_sum += h1_mag * sinf(h1_phase);
+                    h2_i_sum += h2_mag * cosf(h2_phase);
+                    h2_q_sum += h2_mag * sinf(h2_phase);
+                }
+            }
+
+            if (drdy_abort) { break; }
+
+            float inv_blocks = 1.0f / (float)n_blocks_per_step;
+            float h1_i = h1_i_sum * inv_blocks;
+            float h1_q = h1_q_sum * inv_blocks;
+            float h2_i = h2_i_sum * inv_blocks;
+            float h2_q = h2_q_sum * inv_blocks;
+            float h1_mag = sqrtf(h1_i * h1_i + h1_q * h1_q);
+            float h2_mag = sqrtf(h2_i * h2_i + h2_q * h2_q);
+            float h1_phase = atan2f(h1_q, h1_i);
+            float h2_phase = atan2f(h2_q, h2_i);
+            float h1_signed = h1_mag * cosf(h1_phase);
+            float h2_signed = h2_mag * cosf(h2_phase);
+            float dc_mean = (dc_count > 0) ? (dc_sum / (float)dc_count) : 0.0f;
+
+            printf("HSCAN %+.3f %.6f %.6f %.6f %.6f %.6f %.6f %.6f\r\n",
+                   (double)bias_v,
+                   (double)h1_mag, (double)h1_phase, (double)h1_signed,
+                   (double)h2_mag, (double)h2_phase, (double)h2_signed,
+                   (double)dc_mean);
+        }
+
+        dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+        if (drdy_abort) {
+            printf("[scan] DRDY timeout — harmonic scan aborted\r\n");
+        } else {
+            printf("[scan] harmonic scan done\r\n");
+        }
+    } else if (strcmp(cmd, "cal bias") == 0) {
+        if (ctx.state != APP_STATE_IDLE) {
+            printf("[cal] stop bias control first (state must be IDLE)\r\n");
+        } else {
+            bias_cal_result_t result = {0};
+            if (run_bias_calibration_scan(&result, true)) {
+                commit_bias_calibration(&result);
+            }
+        }
     } else if (strncmp(cmd, "scan vpi", 8) == 0) {
         /* "scan vpi [fast]" — open-loop V_pi characterization sweep.
          *
@@ -666,6 +1332,27 @@ void app_handle_command(const char *cmd)
             }
             printf("\r\n[scan] Vpi = %.3fV (%d intervals)\r\n",
                    (double)vpi, n_mins - 1);
+            ctx.config->vpi_v = vpi;
+        }
+    } else if (strncmp(cmd, "perturb ", 8) == 0) {
+        /* "perturb <V>" — add a one-shot offset to the bias voltage while
+         * the controller is running, to test perturbation recovery.
+         * The controller immediately starts correcting the error. */
+        if (ctx.state != APP_STATE_LOCKING && ctx.state != APP_STATE_LOCKED) {
+            printf("[perturb] only valid while controller is running\r\n");
+        } else {
+            char *endptr = NULL;
+            float delta = strtof(cmd + 8, &endptr);
+            if (endptr != cmd + 8) {
+                ctx.bias_ctrl.bias_voltage += delta;
+                ctx.bias_ctrl.locked = false;
+                printf("[perturb] bias offset %+.3fV -> bias now %.3fV\r\n",
+                       (double)delta, (double)ctx.bias_ctrl.bias_voltage);
+            } else {
+                printf("[perturb] usage: perturb <delta_V>  (e.g. perturb 3.0)\r\n");
+            }
         }
     }
+
+cmd_done:;
 }

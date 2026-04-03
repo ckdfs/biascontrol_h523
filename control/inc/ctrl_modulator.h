@@ -89,6 +89,13 @@ typedef struct {
     float sweep_start_v;
     float sweep_end_v;
     float sweep_step_v;
+
+    /**
+     * Target bias phase for BIAS_POINT_CUSTOM (radians).
+     * Standard points: 0=MIN, M_PI/2=QUAD, M_PI=MAX.
+     * Set via mzm_set_custom_phase() before starting control.
+     */
+    float target_phase_rad;
 } modulator_strategy_t;
 
 /**

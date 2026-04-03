@@ -48,6 +48,11 @@ typedef struct {
     float h2_i_sum;
     float h2_q_sum;
 
+    /* Additional H2-only smoothing state (EMA on coherent I/Q) */
+    float h2_i_filt;
+    float h2_q_filt;
+    bool h2_filter_valid;
+
     /* Control */
     pid_state_t pid;
     float bias_voltage;             /**< Current bias setpoint (volts) */

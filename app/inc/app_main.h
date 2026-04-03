@@ -48,7 +48,9 @@ const app_context_t *app_get_context(void);
  *   "dac mid"            — set all DAC channels to 0 V
  *   "adc [N]"            — read N ADC samples (default 64), print raw values
  *   "goertzel [N]"       — run N Goertzel blocks, print H1/H2/DC statistics
+ *   "cal bias"           — force a fresh bias calibration scan and update anchors
  *   "scan vpi [fast]"    — V_pi characterization sweep; "fast" = single-sided
+ *   "scan harmonics [fast] [blocks]" — open-loop H1/H2/DC sweep with signed harmonics
  *
  * @param cmd  Null-terminated command string
  */

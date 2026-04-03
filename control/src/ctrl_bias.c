@@ -1,6 +1,53 @@
 #include "ctrl_bias.h"
 #include "drv_dac8568.h"
+#include "drv_ads131m02.h"
+#include "drv_board.h"
 #include <math.h>
+#include <float.h>
+
+/*
+ * H2 is the weakest observable in the loop.  Smooth its coherent I/Q estimate
+ * more aggressively than H1, and freeze updates when the DC reference drops
+ * too low to trust the normalization.
+ */
+#define BIAS_CTRL_H2_EMA_ALPHA      0.12f
+#define BIAS_CTRL_H2_DC_GATE_V      0.20f
+
+typedef struct {
+    goertzel_state_t *g_h1;
+    goertzel_state_t *g_h2;
+    dc_accum_t *dc_acc;
+    pilot_gen_t *pilot;
+    float bias_v;
+    uint8_t dac_ch;
+    volatile uint32_t samples_collected;
+    volatile bool block_done;
+} coarse_sweep_ctx_t;
+
+static coarse_sweep_ctx_t *s_coarse_sweep_ctx = NULL;
+
+static void coarse_sweep_adc_callback(const ads131m02_sample_t *sample)
+{
+    coarse_sweep_ctx_t *ctx = s_coarse_sweep_ctx;
+    if (ctx == NULL || sample == NULL || !sample->valid || ctx->block_done) {
+        return;
+    }
+
+    float ch0 = ads131m02_code_to_voltage(sample->ch0, ADS131M02_GAIN_1);
+    float ch1 = ads131m02_code_to_voltage(sample->ch1, ADS131M02_GAIN_1);
+
+    goertzel_process_sample(ctx->g_h1, ch0);
+    goertzel_process_sample(ctx->g_h2, ch0);
+    dc_accum_process(ctx->dc_acc, ch1);
+
+    ctx->samples_collected++;
+    if (ctx->samples_collected >= DSP_GOERTZEL_BLOCK_SIZE) {
+        ctx->block_done = true;
+        return;
+    }
+
+    dac8568_set_voltage(ctx->dac_ch, ctx->bias_v + pilot_gen_next(ctx->pilot));
+}
 
 void bias_ctrl_init(bias_ctrl_t *ctrl,
                     modulator_type_t mod_type,
@@ -30,6 +77,9 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     ctrl->h1_q_sum = 0.0f;
     ctrl->h2_i_sum = 0.0f;
     ctrl->h2_q_sum = 0.0f;
+    ctrl->h2_i_filt = 0.0f;
+    ctrl->h2_q_filt = 0.0f;
+    ctrl->h2_filter_valid = false;
 
     /* PID controller */
     float control_dt = (float)(DSP_GOERTZEL_BLOCK_SIZE * DSP_CONTROL_DECIMATION)
@@ -110,9 +160,7 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     float h2_q = ctrl->h2_q_sum * inv_blocks;
 
     ctrl->last_harmonics.h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
-    ctrl->last_harmonics.h2_magnitude = sqrtf(h2_i * h2_i + h2_q * h2_q);
     ctrl->last_harmonics.h1_phase = atan2f(h1_q, h1_i);
-    ctrl->last_harmonics.h2_phase = atan2f(h2_q, h2_i);
 
     ctrl->h1_i_sum = 0.0f;
     ctrl->h1_q_sum = 0.0f;
@@ -126,6 +174,35 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
 
+    /*
+     * H2-only EMA in coherent I/Q space:
+     * - When DC is healthy, pull the filter toward the latest block average.
+     * - When DC is weak, keep the last trusted H2 value instead of feeding
+     *   low-SNR updates into the ratio-based phase estimate.
+     */
+    if (ctrl->last_harmonics.dc_power >= BIAS_CTRL_H2_DC_GATE_V) {
+        if (!ctrl->h2_filter_valid) {
+            ctrl->h2_i_filt = h2_i;
+            ctrl->h2_q_filt = h2_q;
+            ctrl->h2_filter_valid = true;
+        } else {
+            float a = BIAS_CTRL_H2_EMA_ALPHA;
+            ctrl->h2_i_filt += a * (h2_i - ctrl->h2_i_filt);
+            ctrl->h2_q_filt += a * (h2_q - ctrl->h2_q_filt);
+        }
+    } else if (!ctrl->h2_filter_valid) {
+        /*
+         * During initial bring-up, if we have no trusted H2 yet, fall back to
+         * the raw estimate so the loop still has something to work with.
+         */
+        ctrl->h2_i_filt = h2_i;
+        ctrl->h2_q_filt = h2_q;
+    }
+
+    ctrl->last_harmonics.h2_magnitude = sqrtf(ctrl->h2_i_filt * ctrl->h2_i_filt +
+                                              ctrl->h2_q_filt * ctrl->h2_q_filt);
+    ctrl->last_harmonics.h2_phase = atan2f(ctrl->h2_q_filt, ctrl->h2_i_filt);
+
     /* Compute error using modulator strategy */
     if (ctrl->strategy == NULL || ctrl->strategy->compute_error == NULL) {
         return false;
@@ -133,7 +210,7 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
 
     float error = ctrl->strategy->compute_error(&ctrl->last_harmonics,
                                                  ctrl->target_point,
-                                                 ctrl->strategy->ctx);
+                                                 ctrl);
 
     /* PID update */
     ctrl->bias_voltage = pid_update(&ctrl->pid, error);
@@ -142,7 +219,7 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     if (ctrl->strategy->is_locked) {
         ctrl->locked = ctrl->strategy->is_locked(&ctrl->last_harmonics,
                                                   ctrl->target_point,
-                                                  ctrl->strategy->ctx);
+                                                  ctrl);
     }
 
     return true;
@@ -160,12 +237,28 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
     goertzel_reset(&ctrl->goertzel_h2);
     pilot_gen_reset(&ctrl->pilot);
     pid_reset(&ctrl->pid);
+    if (fabsf(ctrl->pid.ki) > 1e-6f) {
+        /*
+         * The PI output is the absolute bias voltage, not a delta.  Seed the
+         * integrator from the coarse-sweep result so closed-loop takeover starts
+         * from the acquired operating point instead of jumping back toward 0 V.
+         */
+        ctrl->pid.integral = ctrl->bias_voltage / ctrl->pid.ki;
+        if (ctrl->pid.integral < ctrl->pid.int_min) {
+            ctrl->pid.integral = ctrl->pid.int_min;
+        } else if (ctrl->pid.integral > ctrl->pid.int_max) {
+            ctrl->pid.integral = ctrl->pid.int_max;
+        }
+    }
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
     ctrl->h1_i_sum = 0.0f;
     ctrl->h1_q_sum = 0.0f;
     ctrl->h2_i_sum = 0.0f;
     ctrl->h2_q_sum = 0.0f;
+    ctrl->h2_i_filt = 0.0f;
+    ctrl->h2_q_filt = 0.0f;
+    ctrl->h2_filter_valid = false;
     ctrl->block_count = 0;
     ctrl->running = true;
     ctrl->locked = false;
@@ -174,36 +267,124 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
 void bias_ctrl_stop(bias_ctrl_t *ctrl)
 {
     ctrl->running = false;
+    ctrl->locked = false;
 }
 
 float bias_ctrl_coarse_sweep(bias_ctrl_t *ctrl)
 {
     /*
-     * Sweep the bias voltage across the full range and find the voltage
-     * where the error function is closest to zero.
+     * Open-loop bias sweep to find the initial operating point closest to
+     * the target bias phase.
      *
-     * This is a blocking function that reads ADC samples synchronously.
-     * Should be called before bias_ctrl_start().
+     * Blocking — must be called before bias_ctrl_start() (no ISR conflict).
+     * Uses the same error function as the closed-loop controller, so it works
+     * for any target (QUAD, MAX, MIN, CUSTOM).
      *
-     * TODO: Implement with actual ADC reads when hardware is available.
-     * The algorithm:
-     *   1. For each voltage step from sweep_start to sweep_end:
-     *      a. Set DAC to voltage
-     *      b. Wait for settling (a few ms)
-     *      c. Collect N*M samples, run Goertzel
-     *      d. Compute error for target bias point
-     *   2. Find voltage with minimum |error|
-     *   3. Set bias_voltage to that value
+     * Sweep parameters:
+     *   Step:    0.2 V  (101 steps over ±10 V range)
+     *   Per step: 1 Goertzel block (DSP_GOERTZEL_BLOCK_SIZE samples, ~20 ms)
+     *             + 2 ms DAC/circuit settling
+     *   Total:   ~2.2 s
+     *
+     * Note: pilot tone is NOT added during sweep — coarse acquisition only
+     * needs to find the minimum |error| voltage, not sub-mV accuracy.
      */
 
-    if (ctrl->strategy == NULL) {
+    if (ctrl->strategy == NULL || ctrl->strategy->compute_error == NULL) {
         return 0.0f;
     }
 
-    /* Placeholder: start at midpoint */
-    float mid = (ctrl->strategy->sweep_start_v + ctrl->strategy->sweep_end_v) / 2.0f;
-    ctrl->bias_voltage = mid;
-    return mid;
+    const float SWEEP_STEP_V = ctrl->strategy->sweep_step_v > 0.0f
+                             ? ctrl->strategy->sweep_step_v
+                             : 0.2f;
+    const float sweep_start  = ctrl->strategy->sweep_start_v;
+    const float sweep_end    = ctrl->strategy->sweep_end_v;
+    const uint8_t dac_ch     = (uint8_t)ctrl->strategy->bias_channels[0];
+
+    goertzel_state_t g_h1, g_h2;
+    dc_accum_t dc_acc;
+    goertzel_init(&g_h1,  (float)DSP_PILOT_FREQ_HZ,
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+    goertzel_init(&g_h2,  (float)(DSP_PILOT_FREQ_HZ * 2),
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+    dc_accum_init(&dc_acc, DSP_GOERTZEL_BLOCK_SIZE);
+    pilot_gen_t pilot;
+    pilot_gen_init(&pilot, (float)DSP_PILOT_FREQ_HZ,
+                   (float)DSP_SAMPLE_RATE_HZ, ctrl->pilot_amplitude);
+
+    float best_v   = sweep_start;
+    float best_err = FLT_MAX;
+
+    /* Large initial jump (wherever the DAC currently is -> sweep_start). */
+    dac8568_set_voltage(dac_ch, sweep_start);
+    board_delay_ms(100);
+
+    for (float v = sweep_start; v <= sweep_end + 1e-4f; v += SWEEP_STEP_V) {
+        /* Settle the DC bias step first. */
+        dac8568_set_voltage(dac_ch, v);
+        board_delay_ms(2);
+
+        /* Collect one Goertzel block */
+        goertzel_reset(&g_h1);
+        goertzel_reset(&g_h2);
+        dc_accum_reset(&dc_acc);
+        pilot_gen_reset(&pilot);
+
+        coarse_sweep_ctx_t sweep_ctx = {
+            .g_h1 = &g_h1,
+            .g_h2 = &g_h2,
+            .dc_acc = &dc_acc,
+            .pilot = &pilot,
+            .bias_v = v,
+            .dac_ch = dac_ch,
+            .samples_collected = 0,
+            .block_done = false,
+        };
+        s_coarse_sweep_ctx = &sweep_ctx;
+
+        /* Queue the first pilot sample so the next ADC frame sees it. */
+        dac8568_set_voltage(dac_ch, v + pilot_gen_next(&pilot));
+
+        ads131m02_start_continuous(coarse_sweep_adc_callback);
+
+        bool timeout = false;
+        uint32_t t0 = board_get_tick_ms();
+        while (!sweep_ctx.block_done) {
+            if ((board_get_tick_ms() - t0) > 100) {
+                timeout = true;
+                break;
+            }
+        }
+
+        ads131m02_stop_continuous();
+        s_coarse_sweep_ctx = NULL;
+
+        /* Leave the DAC at the step's DC bias before moving to the next step. */
+        dac8568_set_voltage(dac_ch, v);
+
+        if (timeout) {
+            /* ADC not responding — abort sweep, return midpoint */
+            break;
+        }
+
+        /* Build harmonic_data_t from this block */
+        harmonic_data_t hdata;
+        goertzel_get_result(&g_h1, &hdata.h1_magnitude, &hdata.h1_phase);
+        goertzel_get_result(&g_h2, &hdata.h2_magnitude, &hdata.h2_phase);
+        hdata.dc_power = dc_accum_get_mean(&dc_acc);
+
+        /* Evaluate error using the same function as closed-loop control */
+        float err = ctrl->strategy->compute_error(&hdata, ctrl->target_point, ctrl);
+        float abs_err = (err < 0.0f) ? -err : err;
+
+        if (abs_err < best_err) {
+            best_err = abs_err;
+            best_v   = v;
+        }
+    }
+
+    ctrl->bias_voltage = best_v;
+    return best_v;
 }
 
 void bias_ctrl_set_target(bias_ctrl_t *ctrl, bias_point_t target)

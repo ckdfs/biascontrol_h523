@@ -13,6 +13,13 @@ typedef struct {
     /* Modulator settings */
     modulator_type_t modulator_type;
     bias_point_t target_point;
+    float target_phase_rad;          /**< Target bias phase for BIAS_POINT_CUSTOM (rad) */
+    bool bias_cal_valid;             /**< True after a successful bias calibration scan */
+    float vpi_v;                     /**< Calibrated Vpi (V) */
+    float bias_null_v;               /**< Central null bias anchor (V) */
+    float bias_peak_v;               /**< Central peak bias anchor (V) */
+    float bias_quad_pos_v;           /**< Rising-slope quadrature anchor (V) */
+    float bias_quad_neg_v;           /**< Falling-slope quadrature anchor (V) */
 
     /* Control parameters */
     float kp;                   /**< PID proportional gain */

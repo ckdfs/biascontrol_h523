@@ -103,6 +103,9 @@ void board_led_toggle(void);
 /** Simple blocking delay (ms) using SysTick */
 void board_delay_ms(uint32_t ms);
 
+/** Return millisecond tick counter (wraps at 2^32 ms ≈ 49 days) */
+uint32_t board_get_tick_ms(void);
+
 /** DAC chip-select control (active low) */
 void board_dac_cs_low(void);
 void board_dac_cs_high(void);

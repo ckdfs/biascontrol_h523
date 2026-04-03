@@ -6,6 +6,13 @@ void app_config_defaults(void)
 {
     config.modulator_type = MOD_TYPE_MZM;
     config.target_point = BIAS_POINT_QUAD;
+    config.target_phase_rad = 1.5707963f;   /* π/2 — quadrature */
+    config.bias_cal_valid = false;
+    config.vpi_v = 0.0f;
+    config.bias_null_v = 0.0f;
+    config.bias_peak_v = 0.0f;
+    config.bias_quad_pos_v = 0.0f;
+    config.bias_quad_neg_v = 0.0f;
     config.kp = 1.0f;
     config.ki = 10.0f;
     config.initial_bias_v = 0.0f;
