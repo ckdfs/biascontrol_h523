@@ -275,7 +275,7 @@ typedef struct {
 | 板级启动记录 | [docs/plan/spec-01-bringup.md](docs/plan/spec-01-bringup.md) | 驱动验证过程、调试经验与教训 |
 | DSP 流水线 | [docs/plan/spec-02-dsp-pipeline.md](docs/plan/spec-02-dsp-pipeline.md) | Goertzel、导频生成、ISR 集成、验收标准 |
 | MZM 闭环控制 | [docs/plan/spec-03-mzm-quad.md](docs/plan/spec-03-mzm-quad.md) | 全范围工作点控制、标定锚点、局部控制策略、验收标准 |
-| 鲁棒性与多工作点 | [docs/plan/spec-04-robustness.md](docs/plan/spec-04-robustness.md) | max/min 策略、归一化、UART 整定接口 |
+| 鲁棒性与持久化 | [docs/plan/spec-04-robustness.md](docs/plan/spec-04-robustness.md) | 长期稳定性、UART 整定接口、参数持久化 |
 | 多调制器扩展 | [docs/plan/spec-05-multi-modulator.md](docs/plan/spec-05-multi-modulator.md) | DDMZM / DPMZM / DPQPSK / PM 规划 |
 | AI 维护指南 | [CLAUDE.md](CLAUDE.md) | 构建命令、调试陷阱、不变量（供 AI 使用） |
 | 实测扫描数据 | [docs/scans/](docs/scans/) | UART 原始数据、偏压扫描图、工作点照片 |

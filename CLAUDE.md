@@ -151,7 +151,7 @@ make && ctest
 - Goertzel block size N must ensure integer cycles of pilot frequency (no spectral leakage)
 - Longer coherent Goertzel blocks are preferred for weak harmonic measurements, as long as the
   integer-cycle rule is preserved
-- Harmonic magnitudes must be normalized by DC power before error computation
+- Error computation uses calibrated H1/H2 phase-vector axes with online J1/J2 compensation, not DC normalization
 - DAC output = bias_setpoint + pilot_sample, updated synchronously with ADC
 - PI controller must have anti-windup clamping
 - DRDY interrupt has highest NVIC priority; control loop runs at lower priority

@@ -41,21 +41,14 @@
 ### Infrastructure
 - [ ] Multi-frequency Goertzel: support 2+ pilot frequencies simultaneously
 - [ ] Multi-channel DAC coordination: lock N channels in sequence or parallel
-- [ ] Modulator type selection: UART command to switch modulator
-- [ ] Strategy registry: `modulator_get_strategy(type)` lookup
+- [x] Modulator type selection: UART command `set mod <type>` — implemented
+- [x] Strategy registry: `modulator_get_strategy(type)` lookup — implemented
 
 ### Per-Modulator Implementation
 - [ ] DDMZM: implement strategy, test on hardware
 - [ ] DPMZM: implement strategy, test on hardware
 - [ ] DPQPSK: implement strategy, test on hardware
 - [ ] PM: implement strategy, test on hardware
-
-### Production Features
-- [ ] Flash parameter storage (retain calibration across power cycles)
-- [ ] Watchdog timer (auto-reset on firmware hang)
-- [ ] Brown-out detection (safe shutdown)
-- [ ] Error logging to flash
-- [ ] Factory calibration routine
 
 ## Adding a New Modulator
 
@@ -74,4 +67,3 @@ Follow the Strategy Pattern defined in `control/inc/ctrl_modulator.h`:
 1. Each modulator type locks on real hardware
 2. Modulator switching works via UART without reboot
 3. All modulator types achieve < 2 degree accuracy
-4. Flash storage survives 10,000 power cycles
