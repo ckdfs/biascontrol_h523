@@ -7,11 +7,45 @@
 
 /*
  * H2 is the weakest observable in the loop.  Smooth its coherent I/Q estimate
- * more aggressively than H1, and freeze updates when the DC reference drops
- * too low to trust the normalization.
+ * more aggressively than H1.
  */
-#define BIAS_CTRL_H2_EMA_ALPHA      0.12f
-#define BIAS_CTRL_H2_DC_GATE_V      0.20f
+#define BIAS_CTRL_H2_EMA_ALPHA      0.05f
+#define BIAS_CTRL_H2_WARMUP_UPDATES  3u
+
+static float robust_meanf(const float *vals, uint32_t n)
+{
+    float tmp[DSP_CONTROL_DECIMATION];
+    if (n == 0) {
+        return 0.0f;
+    }
+
+    for (uint32_t i = 0; i < n; i++) {
+        tmp[i] = vals[i];
+    }
+
+    for (uint32_t i = 1; i < n; i++) {
+        float key = tmp[i];
+        uint32_t j = i;
+        while (j > 0 && tmp[j - 1] > key) {
+            tmp[j] = tmp[j - 1];
+            j--;
+        }
+        tmp[j] = key;
+    }
+
+    if (n == 1) return tmp[0];
+    if (n == 2) return 0.5f * (tmp[0] + tmp[1]);
+    if (n == 3) return tmp[1];
+    if (n == 4) return 0.5f * (tmp[1] + tmp[2]);
+
+    {
+        float sum = 0.0f;
+        for (uint32_t i = 1; i < n - 1; i++) {
+            sum += tmp[i];
+        }
+        return sum / (float)(n - 2);
+    }
+}
 
 typedef struct {
     goertzel_state_t *g_h1;
@@ -73,10 +107,12 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     /* DC accumulator */
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
-    ctrl->h1_i_sum = 0.0f;
-    ctrl->h1_q_sum = 0.0f;
-    ctrl->h2_i_sum = 0.0f;
-    ctrl->h2_q_sum = 0.0f;
+    for (uint32_t i = 0; i < DSP_CONTROL_DECIMATION; i++) {
+        ctrl->h1_i_blocks[i] = 0.0f;
+        ctrl->h1_q_blocks[i] = 0.0f;
+        ctrl->h2_i_blocks[i] = 0.0f;
+        ctrl->h2_q_blocks[i] = 0.0f;
+    }
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
     ctrl->h2_filter_valid = false;
@@ -93,6 +129,7 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     /* Decimation */
     ctrl->block_count = 0;
     ctrl->control_decimation = DSP_CONTROL_DECIMATION;
+    ctrl->h2_warmup_updates_remaining = BIAS_CTRL_H2_WARMUP_UPDATES;
 
     /* Clear harmonics */
     ctrl->last_harmonics.h1_magnitude = 0.0f;
@@ -138,11 +175,11 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     goertzel_reset(&ctrl->goertzel_h1);
     goertzel_reset(&ctrl->goertzel_h2);
 
-    /* Coherently accumulate harmonics across multiple blocks before updating control. */
-    ctrl->h1_i_sum += h1_mag * cosf(h1_phase);
-    ctrl->h1_q_sum += h1_mag * sinf(h1_phase);
-    ctrl->h2_i_sum += h2_mag * cosf(h2_phase);
-    ctrl->h2_q_sum += h2_mag * sinf(h2_phase);
+    /* Store each coherent block result for robust averaging at control time. */
+    ctrl->h1_i_blocks[ctrl->block_count] = h1_mag * cosf(h1_phase);
+    ctrl->h1_q_blocks[ctrl->block_count] = h1_mag * sinf(h1_phase);
+    ctrl->h2_i_blocks[ctrl->block_count] = h2_mag * cosf(h2_phase);
+    ctrl->h2_q_blocks[ctrl->block_count] = h2_mag * sinf(h2_phase);
 
     ctrl->block_count++;
 
@@ -152,20 +189,21 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     }
     ctrl->block_count = 0;
 
-    /* Convert the multi-block coherent sums back to averaged magnitude / phase. */
-    float inv_blocks = 1.0f / (float)ctrl->control_decimation;
-    float h1_i = ctrl->h1_i_sum * inv_blocks;
-    float h1_q = ctrl->h1_q_sum * inv_blocks;
-    float h2_i = ctrl->h2_i_sum * inv_blocks;
-    float h2_q = ctrl->h2_q_sum * inv_blocks;
+    /* Robust average over the multi-block coherent I/Q values. */
+    float h1_i = robust_meanf(ctrl->h1_i_blocks, ctrl->control_decimation);
+    float h1_q = robust_meanf(ctrl->h1_q_blocks, ctrl->control_decimation);
+    float h2_i = robust_meanf(ctrl->h2_i_blocks, ctrl->control_decimation);
+    float h2_q = robust_meanf(ctrl->h2_q_blocks, ctrl->control_decimation);
 
     ctrl->last_harmonics.h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
     ctrl->last_harmonics.h1_phase = atan2f(h1_q, h1_i);
 
-    ctrl->h1_i_sum = 0.0f;
-    ctrl->h1_q_sum = 0.0f;
-    ctrl->h2_i_sum = 0.0f;
-    ctrl->h2_q_sum = 0.0f;
+    for (uint32_t i = 0; i < DSP_CONTROL_DECIMATION; i++) {
+        ctrl->h1_i_blocks[i] = 0.0f;
+        ctrl->h1_q_blocks[i] = 0.0f;
+        ctrl->h2_i_blocks[i] = 0.0f;
+        ctrl->h2_q_blocks[i] = 0.0f;
+    }
 
     /* Compute DC power (average over all samples in the decimation window) */
     if (ctrl->dc_count > 0) {
@@ -174,34 +212,31 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
 
-    /*
-     * H2-only EMA in coherent I/Q space:
-     * - When DC is healthy, pull the filter toward the latest block average.
-     * - When DC is weak, keep the last trusted H2 value instead of feeding
-     *   low-SNR updates into the ratio-based phase estimate.
-     */
-    if (ctrl->last_harmonics.dc_power >= BIAS_CTRL_H2_DC_GATE_V) {
-        if (!ctrl->h2_filter_valid) {
-            ctrl->h2_i_filt = h2_i;
-            ctrl->h2_q_filt = h2_q;
-            ctrl->h2_filter_valid = true;
-        } else {
-            float a = BIAS_CTRL_H2_EMA_ALPHA;
-            ctrl->h2_i_filt += a * (h2_i - ctrl->h2_i_filt);
-            ctrl->h2_q_filt += a * (h2_q - ctrl->h2_q_filt);
-        }
-    } else if (!ctrl->h2_filter_valid) {
-        /*
-         * During initial bring-up, if we have no trusted H2 yet, fall back to
-         * the raw estimate so the loop still has something to work with.
-         */
+    /* H2-only EMA in coherent I/Q space, without any DC gating. */
+    if (!ctrl->h2_filter_valid) {
         ctrl->h2_i_filt = h2_i;
         ctrl->h2_q_filt = h2_q;
+        ctrl->h2_filter_valid = true;
+    } else {
+        float a = BIAS_CTRL_H2_EMA_ALPHA;
+        ctrl->h2_i_filt += a * (h2_i - ctrl->h2_i_filt);
+        ctrl->h2_q_filt += a * (h2_q - ctrl->h2_q_filt);
     }
 
     ctrl->last_harmonics.h2_magnitude = sqrtf(ctrl->h2_i_filt * ctrl->h2_i_filt +
                                               ctrl->h2_q_filt * ctrl->h2_q_filt);
     ctrl->last_harmonics.h2_phase = atan2f(ctrl->h2_q_filt, ctrl->h2_i_filt);
+
+    /*
+     * Align online control with the scan path: the first H2 update after start
+     * is treated as a warm-up sample. We keep the filtered harmonic estimate
+     * for debug/inspection, but do not let it drive the PID or lock decision.
+     */
+    if (ctrl->h2_warmup_updates_remaining > 0u) {
+        ctrl->h2_warmup_updates_remaining--;
+        ctrl->locked = false;
+        return false;
+    }
 
     /* Compute error using modulator strategy */
     if (ctrl->strategy == NULL || ctrl->strategy->compute_error == NULL) {
@@ -252,13 +287,16 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
     }
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
-    ctrl->h1_i_sum = 0.0f;
-    ctrl->h1_q_sum = 0.0f;
-    ctrl->h2_i_sum = 0.0f;
-    ctrl->h2_q_sum = 0.0f;
+    for (uint32_t i = 0; i < DSP_CONTROL_DECIMATION; i++) {
+        ctrl->h1_i_blocks[i] = 0.0f;
+        ctrl->h1_q_blocks[i] = 0.0f;
+        ctrl->h2_i_blocks[i] = 0.0f;
+        ctrl->h2_q_blocks[i] = 0.0f;
+    }
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
     ctrl->h2_filter_valid = false;
+    ctrl->h2_warmup_updates_remaining = BIAS_CTRL_H2_WARMUP_UPDATES;
     ctrl->block_count = 0;
     ctrl->running = true;
     ctrl->locked = false;

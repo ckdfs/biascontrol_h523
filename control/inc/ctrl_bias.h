@@ -42,11 +42,11 @@ typedef struct {
     float dc_sum;
     uint32_t dc_count;
 
-    /* Multi-block coherent accumulation for 10 Hz control updates */
-    float h1_i_sum;
-    float h1_q_sum;
-    float h2_i_sum;
-    float h2_q_sum;
+    /* Per-block coherent I/Q values for robust multi-block averaging */
+    float h1_i_blocks[DSP_CONTROL_DECIMATION];
+    float h1_q_blocks[DSP_CONTROL_DECIMATION];
+    float h2_i_blocks[DSP_CONTROL_DECIMATION];
+    float h2_q_blocks[DSP_CONTROL_DECIMATION];
 
     /* Additional H2-only smoothing state (EMA on coherent I/Q) */
     float h2_i_filt;
@@ -61,6 +61,7 @@ typedef struct {
     /* Decimation counter for control loop rate */
     uint32_t block_count;
     uint32_t control_decimation;
+    uint32_t h2_warmup_updates_remaining;
 
     /* Latest harmonic data (for monitoring/debug) */
     harmonic_data_t last_harmonics;

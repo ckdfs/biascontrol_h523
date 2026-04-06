@@ -18,6 +18,39 @@
 
 #define SCAN_MAX_STEPS 201
 #define CAL_VERIFY_BLOCKS 5
+#define SCAN_INITIAL_SETTLE_MS 1000
+#define CAL_VERIFY_SETTLE_MS SCAN_INITIAL_SETTLE_MS
+
+static float robust_meanf_local(const float *vals, int n)
+{
+    float tmp[20];
+    if (n <= 0) {
+        return 0.0f;
+    }
+    for (int i = 0; i < n; i++) {
+        tmp[i] = vals[i];
+    }
+    for (int i = 1; i < n; i++) {
+        float key = tmp[i];
+        int j = i;
+        while (j > 0 && tmp[j - 1] > key) {
+            tmp[j] = tmp[j - 1];
+            j--;
+        }
+        tmp[j] = key;
+    }
+    if (n == 1) return tmp[0];
+    if (n == 2) return 0.5f * (tmp[0] + tmp[1]);
+    if (n == 3) return tmp[1];
+    if (n == 4) return 0.5f * (tmp[1] + tmp[2]);
+    {
+        float sum = 0.0f;
+        for (int i = 1; i < n - 1; i++) {
+            sum += tmp[i];
+        }
+        return sum / (float)(n - 2);
+    }
+}
 
 typedef struct {
     bool valid;
@@ -26,6 +59,15 @@ typedef struct {
     float peak_v;
     float quad_pos_v;
     float quad_neg_v;
+    /* Harmonic-axis calibration for the phase-vector controller */
+    float h1_offset;
+    float h2_offset;
+    float h1_axis;
+    float h2_axis;
+    float h1_axis_sign;
+    float h2_axis_sign;
+    float pilot_cal_v;
+    bool  harmonics_valid;
 } bias_cal_result_t;
 
 /* ========================================================================= */
@@ -116,13 +158,41 @@ static bool measure_harmonics_at_bias(float bias_v, int n_blocks, harmonic_data_
     goertzel_init(&g_h2, (float)(DSP_PILOT_FREQ_HZ * 2),
                   (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
 
-    float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
-    float h2_i_sum = 0.0f, h2_q_sum = 0.0f;
+    float h1_i_blocks[CAL_VERIFY_BLOCKS];
+    float h1_q_blocks[CAL_VERIFY_BLOCKS];
+    float h2_i_blocks[CAL_VERIFY_BLOCKS];
+    float h2_q_blocks[CAL_VERIFY_BLOCKS];
     float dc_sum = 0.0f;
     uint32_t dc_count = 0;
 
+    /*
+     * Verification jumps between widely separated anchors (null -> peak ->
+     * quad), so the small 5 ms settle used earlier was capturing the analog
+     * path while it was still moving.  Use the same large-step settle policy
+     * as the scan start, then discard one full pilot block before measuring.
+     */
     dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
-    board_delay_ms(5);
+    board_delay_ms(CAL_VERIFY_SETTLE_MS);
+
+    pilot_gen_reset(&pilot);
+    for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
+        float dac_v = bias_v + pilot_gen_next(&pilot);
+        dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+
+        uint32_t t0 = HAL_GetTick();
+        while (board_adc_drdy_read() != 0) {
+            if ((HAL_GetTick() - t0) > 5) {
+                dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
+                return false;
+            }
+        }
+
+        ads131m02_sample_t smp;
+        (void)ads131m02_read_sample(&smp);
+    }
+
+    dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+    board_delay_ms(2);
 
     for (int b = 0; b < n_blocks; b++) {
         goertzel_reset(&g_h1);
@@ -155,20 +225,19 @@ static bool measure_harmonics_at_bias(float bias_v, int n_blocks, harmonic_data_
         float h1_mag, h1_phase, h2_mag, h2_phase;
         goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
         goertzel_get_result(&g_h2, &h2_mag, &h2_phase);
-        h1_i_sum += h1_mag * cosf(h1_phase);
-        h1_q_sum += h1_mag * sinf(h1_phase);
-        h2_i_sum += h2_mag * cosf(h2_phase);
-        h2_q_sum += h2_mag * sinf(h2_phase);
+        h1_i_blocks[b] = h1_mag * cosf(h1_phase);
+        h1_q_blocks[b] = h1_mag * sinf(h1_phase);
+        h2_i_blocks[b] = h2_mag * cosf(h2_phase);
+        h2_q_blocks[b] = h2_mag * sinf(h2_phase);
     }
 
     dac8568_set_voltage(ctx.config->bias_dac_channel, 0.0f);
 
     {
-        float inv_blocks = 1.0f / (float)n_blocks;
-        float h1_i = h1_i_sum * inv_blocks;
-        float h1_q = h1_q_sum * inv_blocks;
-        float h2_i = h2_i_sum * inv_blocks;
-        float h2_q = h2_q_sum * inv_blocks;
+        float h1_i = robust_meanf_local(h1_i_blocks, n_blocks);
+        float h1_q = robust_meanf_local(h1_q_blocks, n_blocks);
+        float h2_i = robust_meanf_local(h2_i_blocks, n_blocks);
+        float h2_q = robust_meanf_local(h2_q_blocks, n_blocks);
         out->h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
         out->h1_phase = atan2f(h1_q, h1_i);
         out->h2_magnitude = sqrtf(h2_i * h2_i + h2_q * h2_q);
@@ -434,36 +503,146 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
                 float tmp = result->quad_pos_v;
                 result->quad_pos_v = result->quad_neg_v;
                 result->quad_neg_v = tmp;
+                /* Also swap the harmonic data to stay consistent */
+                harmonic_data_t htmp2 = h_quad_pos;
+                h_quad_pos = h_quad_neg;
+                h_quad_neg = htmp2;
             }
         }
 
-        if (ok_null) {
-            printf("[cal] null test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
-                   (double)result->null_v,
-                   (double)signed_harmonic(h_null.h1_magnitude, h_null.h1_phase),
-                   (double)signed_harmonic(h_null.h2_magnitude, h_null.h2_phase),
-                   (double)h_null.dc_power);
-        }
-        if (ok_peak) {
-            printf("[cal] peak test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
-                   (double)result->peak_v,
-                   (double)signed_harmonic(h_peak.h1_magnitude, h_peak.h1_phase),
-                   (double)signed_harmonic(h_peak.h2_magnitude, h_peak.h2_phase),
-                   (double)h_peak.dc_power);
-        }
-        if (ok_qp) {
-            printf("[cal] quad+ test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
-                   (double)result->quad_pos_v,
-                   (double)signed_harmonic(h_quad_pos.h1_magnitude, h_quad_pos.h1_phase),
-                   (double)signed_harmonic(h_quad_pos.h2_magnitude, h_quad_pos.h2_phase),
-                   (double)h_quad_pos.dc_power);
-        }
-        if (ok_qn) {
-            printf("[cal] quad- test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
-                   (double)result->quad_neg_v,
-                   (double)signed_harmonic(h_quad_neg.h1_magnitude, h_quad_neg.h1_phase),
-                   (double)signed_harmonic(h_quad_neg.h2_magnitude, h_quad_neg.h2_phase),
-                   (double)h_quad_neg.dc_power);
+        {
+            float h1s_null = ok_null ? signed_harmonic(h_null.h1_magnitude, h_null.h1_phase) : 0.0f;
+            float h2s_null = ok_null ? signed_harmonic(h_null.h2_magnitude, h_null.h2_phase) : 0.0f;
+            float h1s_peak = ok_peak ? signed_harmonic(h_peak.h1_magnitude, h_peak.h1_phase) : 0.0f;
+            float h2s_peak = ok_peak ? signed_harmonic(h_peak.h2_magnitude, h_peak.h2_phase) : 0.0f;
+            float h1s_qp = ok_qp ? signed_harmonic(h_quad_pos.h1_magnitude, h_quad_pos.h1_phase) : 0.0f;
+            float h2s_qp = ok_qp ? signed_harmonic(h_quad_pos.h2_magnitude, h_quad_pos.h2_phase) : 0.0f;
+            float h1s_qn = ok_qn ? signed_harmonic(h_quad_neg.h1_magnitude, h_quad_neg.h1_phase) : 0.0f;
+            float h2s_qn = ok_qn ? signed_harmonic(h_quad_neg.h2_magnitude, h_quad_neg.h2_phase) : 0.0f;
+
+            if (ok_null) {
+                printf("[cal] null test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                       (double)result->null_v,
+                       (double)h1s_null,
+                       (double)h2s_null,
+                       (double)h_null.dc_power);
+            }
+            if (ok_peak) {
+                printf("[cal] peak test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                       (double)result->peak_v,
+                       (double)h1s_peak,
+                       (double)h2s_peak,
+                       (double)h_peak.dc_power);
+            }
+            if (ok_qp) {
+                printf("[cal] quad+ test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                       (double)result->quad_pos_v,
+                       (double)h1s_qp,
+                       (double)h2s_qp,
+                       (double)h_quad_pos.dc_power);
+            }
+            if (ok_qn) {
+                printf("[cal] quad- test: V=%+.3f H1s=%+.5f H2s=%+.5f DC=%.5f\r\n",
+                       (double)result->quad_neg_v,
+                       (double)h1s_qn,
+                       (double)h2s_qn,
+                       (double)h_quad_neg.dc_power);
+            }
+
+            /* ------------------------------------------------------------------
+             * Build a calibrated phase-vector model in raw signed-harmonic space:
+             *   H1s_adj = H1s - off1
+             *   H2s_adj = H2s - off2
+             *
+             * off1 is estimated from the H1 zero-crossings (null + peak).
+             * H2 zero-crossings at quad+/quad- are too weak on this board to
+             * estimate a stable offset, so H2 uses zero offset and only stores
+             * axis amplitude + sign.
+             *
+             * The axis amplitudes are then measured from the orthogonal points:
+             *   A1 from |H1s_adj| at quad+/quad-
+             *   A2 from |H2s_adj| at null/peak
+             * ------------------------------------------------------------------ */
+            result->harmonics_valid = false;
+            result->h1_offset = 0.0f;
+            result->h2_offset = 0.0f;
+            result->h1_axis = 0.0f;
+            result->h2_axis = 0.0f;
+            result->h1_axis_sign = 1.0f;
+            result->h2_axis_sign = 1.0f;
+            result->pilot_cal_v = ctx.config->pilot_amplitude_v;
+
+            {
+                float off1_sum = 0.0f;
+                int off1_count = 0;
+                float a1_sum = 0.0f;
+                float a2_sum = 0.0f;
+                int a1_count = 0;
+                int a2_count = 0;
+
+                if (ok_null) {
+                    off1_sum += h1s_null;
+                    off1_count++;
+                }
+                if (ok_peak) {
+                    off1_sum += h1s_peak;
+                    off1_count++;
+                }
+                if (off1_count > 0) {
+                    result->h1_offset = off1_sum / (float)off1_count;
+                }
+                result->h2_offset = 0.0f;
+
+                if (ok_qp) {
+                    a1_sum += fabsf(h1s_qp - result->h1_offset);
+                    a1_count++;
+                    result->h1_axis_sign = ((h1s_qp - result->h1_offset) >= 0.0f) ? 1.0f : -1.0f;
+                }
+                if (ok_qn) {
+                    a1_sum += fabsf(h1s_qn - result->h1_offset);
+                    a1_count++;
+                    if (!ok_qp) {
+                        result->h1_axis_sign = ((h1s_qn - result->h1_offset) <= 0.0f) ? 1.0f : -1.0f;
+                    }
+                }
+
+                if (ok_null) {
+                    a2_sum += fabsf(h2s_null);
+                    a2_count++;
+                    result->h2_axis_sign = (h2s_null >= 0.0f) ? 1.0f : -1.0f;
+                }
+                if (ok_peak) {
+                    a2_sum += fabsf(h2s_peak);
+                    a2_count++;
+                    if (!ok_null) {
+                        result->h2_axis_sign = (h2s_peak <= 0.0f) ? 1.0f : -1.0f;
+                    } else {
+                        result->h2_axis_sign = ((h2s_null - h2s_peak) >= 0.0f) ? 1.0f : -1.0f;
+                    }
+                }
+
+                if (a1_count > 0) {
+                    result->h1_axis = a1_sum / (float)a1_count;
+                }
+                if (a2_count > 0) {
+                    result->h2_axis = a2_sum / (float)a2_count;
+                }
+
+                if (result->h1_axis > 1e-4f && result->h2_axis > 1e-5f &&
+                    fabsf(result->h1_axis_sign) > 0.5f &&
+                    fabsf(result->h2_axis_sign) > 0.5f) {
+                    result->harmonics_valid = true;
+                    printf("[cal] axis cal: off1=%+.5f off2=%+.5f  "
+                           "A1=%.5f sign1=%+.0f  A2=%.5f sign2=%+.0f  pilot=%.1fmV\r\n",
+                           (double)result->h1_offset,
+                           (double)result->h2_offset,
+                           (double)result->h1_axis,
+                           (double)result->h1_axis_sign,
+                           (double)result->h2_axis,
+                           (double)result->h2_axis_sign,
+                           (double)(result->pilot_cal_v * 1000.0f));
+                }
+            }
         }
     }
 
@@ -485,6 +664,24 @@ static void commit_bias_calibration(const bias_cal_result_t *result)
                         result->peak_v,
                         result->quad_pos_v,
                         result->quad_neg_v);
+
+    /* Store harmonic-axis calibration and push to the MZM strategy */
+    ctx.config->cal_harmonics_valid = result->harmonics_valid;
+    ctx.config->cal_h1_offset = result->h1_offset;
+    ctx.config->cal_h2_offset = result->h2_offset;
+    ctx.config->cal_h1_axis = result->h1_axis;
+    ctx.config->cal_h2_axis = result->h2_axis;
+    ctx.config->cal_h1_axis_sign = result->h1_axis_sign;
+    ctx.config->cal_h2_axis_sign = result->h2_axis_sign;
+    ctx.config->cal_pilot_amplitude_v = result->pilot_cal_v;
+    mzm_set_harmonic_axes(result->harmonics_valid,
+                          result->h1_offset,
+                          result->h2_offset,
+                          result->h1_axis,
+                          result->h2_axis,
+                          result->h1_axis_sign,
+                          result->h2_axis_sign,
+                          result->pilot_cal_v);
 
     printf("[cal] Vpi=%.3fV  null=%+.3fV  peak=%+.3fV  quad+=%+.3fV  quad-=%+.3fV\r\n",
            (double)ctx.config->vpi_v,
@@ -537,6 +734,16 @@ static void state_init(void)
                         ctx.config->bias_quad_pos_v,
                         ctx.config->bias_quad_neg_v);
 
+    /* Restore harmonic-axis calibration into the MZM strategy (survives warm reset) */
+    mzm_set_harmonic_axes(ctx.config->cal_harmonics_valid,
+                          ctx.config->cal_h1_offset,
+                          ctx.config->cal_h2_offset,
+                          ctx.config->cal_h1_axis,
+                          ctx.config->cal_h2_axis,
+                          ctx.config->cal_h1_axis_sign,
+                          ctx.config->cal_h2_axis_sign,
+                          ctx.config->cal_pilot_amplitude_v);
+
     transition_to(APP_STATE_HW_SELFTEST);
 }
 
@@ -580,13 +787,18 @@ static void state_idle(void)
 
 static void state_sweeping(void)
 {
-    if (!ctx.config->bias_cal_valid) {
+    if (!ctx.config->bias_cal_valid || !ctx.config->cal_harmonics_valid) {
         bias_cal_result_t result = {0};
         if (!run_bias_calibration_scan(&result, false)) {
             transition_to(APP_STATE_IDLE);
             return;
         }
         commit_bias_calibration(&result);
+        if (!result.harmonics_valid) {
+            printf("[cal] harmonic-axis calibration failed\r\n");
+            transition_to(APP_STATE_IDLE);
+            return;
+        }
     }
 
     /* Seed the controller near the calibrated working-point anchor. */
@@ -724,6 +936,12 @@ void app_handle_command(const char *cmd)
         transition_to(APP_STATE_IDLE);
     } else if (strcmp(cmd, "status") == 0) {
         const harmonic_data_t *h = bias_ctrl_get_harmonics(&ctx.bias_ctrl);
+        float ctrl_error = 0.0f;
+        if (ctx.bias_ctrl.strategy && ctx.bias_ctrl.strategy->compute_error) {
+            ctrl_error = ctx.bias_ctrl.strategy->compute_error(h,
+                                                               ctx.bias_ctrl.target_point,
+                                                               &ctx.bias_ctrl);
+        }
         printf("State: %s\r\n", app_state_name(ctx.state));
         printf("Bias:  %.3f V\r\n", (double)bias_ctrl_get_bias_voltage(&ctx.bias_ctrl));
         printf("Lock:  %s\r\n", bias_ctrl_is_locked(&ctx.bias_ctrl) ? "YES" : "NO");
@@ -747,6 +965,7 @@ void app_handle_command(const char *cmd)
                    (double)(20.0f * log10f(h->h2_magnitude / dc + 1e-9f)),
                    (double)h->h2_phase);
             printf("DC:    %.4fV\r\n", (double)h->dc_power);
+            printf("Err:   %.4f\r\n", (double)ctrl_error);
         }
     } else if (strncmp(cmd, "set bp ", 7) == 0) {
         const char *bp = cmd + 7;
@@ -766,10 +985,16 @@ void app_handle_command(const char *cmd)
             float deg = strtof(bp + 7, &endptr);
             if (endptr != bp + 7 && deg >= 0.0f && deg <= 180.0f) {
                 ctx.config->target_point = BIAS_POINT_CUSTOM;
-                ctx.config->target_phase_rad = deg * ((float)M_PI / 180.0f);
-                mzm_set_custom_phase(ctx.config->target_phase_rad);
-                printf("[bp] custom %.1f deg (%.4f rad)\r\n",
-                       (double)deg, (double)ctx.config->target_phase_rad);
+                float rad = deg * ((float)M_PI / 180.0f);
+                ctx.config->target_phase_rad = rad;
+                mzm_set_custom_phase(rad);
+                if (ctx.config->cal_harmonics_valid) {
+                    printf("[bp] custom %.1f deg (%.4f rad)\r\n",
+                           (double)deg, (double)rad);
+                } else {
+                    printf("[bp] custom %.1f deg (%.4f rad)  [no harmonic-axis cal — run scan vpi first]\r\n",
+                           (double)deg, (double)rad);
+                }
             } else {
                 printf("[bp] usage: set bp custom <degrees>  (0–180)\r\n");
             }
@@ -1059,7 +1284,7 @@ void app_handle_command(const char *cmd)
                n_blocks_per_step, (double)est_s);
 
         dac8568_set_voltage(ctx.config->bias_dac_channel, scan_start);
-        board_delay_ms(100);
+        board_delay_ms(SCAN_INITIAL_SETTLE_MS);
 
         bool drdy_abort = false;
         for (int si = 0; si < n_steps && !drdy_abort; si++) {
@@ -1071,8 +1296,33 @@ void app_handle_command(const char *cmd)
             dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
             board_delay_ms(2);
 
-            float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
-            float h2_i_sum = 0.0f, h2_q_sum = 0.0f;
+            if (si == 0) {
+                goertzel_reset(&g_h1);
+                goertzel_reset(&g_h2);
+                pilot_gen_reset(&scan_pilot);
+                for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE && !drdy_abort; s++) {
+                    float dac_v = bias_v + pilot_gen_next(&scan_pilot);
+                    dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+                    uint32_t t0 = HAL_GetTick();
+                    while (board_adc_drdy_read() != 0) {
+                        if ((HAL_GetTick() - t0) > 5) {
+                            drdy_abort = true;
+                            break;
+                        }
+                    }
+                    if (drdy_abort) { break; }
+                    ads131m02_sample_t smp;
+                    (void)ads131m02_read_sample(&smp);
+                }
+                if (drdy_abort) { break; }
+                dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+                board_delay_ms(2);
+            }
+
+            float h1_i_blocks[20];
+            float h1_q_blocks[20];
+            float h2_i_blocks[20];
+            float h2_q_blocks[20];
             float dc_sum   = 0.0f;
             uint32_t dc_count = 0;
 
@@ -1109,20 +1359,19 @@ void app_handle_command(const char *cmd)
                     float h1_mag, h1_phase, h2_mag, h2_phase;
                     goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
                     goertzel_get_result(&g_h2, &h2_mag, &h2_phase);
-                    h1_i_sum += h1_mag * cosf(h1_phase);
-                    h1_q_sum += h1_mag * sinf(h1_phase);
-                    h2_i_sum += h2_mag * cosf(h2_phase);
-                    h2_q_sum += h2_mag * sinf(h2_phase);
+                    h1_i_blocks[b] = h1_mag * cosf(h1_phase);
+                    h1_q_blocks[b] = h1_mag * sinf(h1_phase);
+                    h2_i_blocks[b] = h2_mag * cosf(h2_phase);
+                    h2_q_blocks[b] = h2_mag * sinf(h2_phase);
                 }
             }
 
             if (drdy_abort) { break; }
 
-            float inv_blocks = 1.0f / (float)n_blocks_per_step;
-            float h1_i = h1_i_sum * inv_blocks;
-            float h1_q = h1_q_sum * inv_blocks;
-            float h2_i = h2_i_sum * inv_blocks;
-            float h2_q = h2_q_sum * inv_blocks;
+            float h1_i = robust_meanf_local(h1_i_blocks, n_blocks_per_step);
+            float h1_q = robust_meanf_local(h1_q_blocks, n_blocks_per_step);
+            float h2_i = robust_meanf_local(h2_i_blocks, n_blocks_per_step);
+            float h2_q = robust_meanf_local(h2_q_blocks, n_blocks_per_step);
             float h1_mag = sqrtf(h1_i * h1_i + h1_q * h1_q);
             float h2_mag = sqrtf(h2_i * h2_i + h2_q * h2_q);
             float h1_phase = atan2f(h1_q, h1_i);
@@ -1205,7 +1454,7 @@ void app_handle_command(const char *cmd)
          * scan), so jumping to scan_start may be a large step (~10V).  Give the
          * bias path time to settle before the first measurement. */
         dac8568_set_voltage(ctx.config->bias_dac_channel, scan_start);
-        board_delay_ms(100);
+        board_delay_ms(SCAN_INITIAL_SETTLE_MS);
 
         int steps_done = 0;
         bool drdy_abort = false;
@@ -1221,8 +1470,31 @@ void app_handle_command(const char *cmd)
             dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
             board_delay_ms(2);
 
+            if (si == 0) {
+                goertzel_reset(&g_h1);
+                pilot_gen_reset(&scan_pilot);
+                for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE && !drdy_abort; s++) {
+                    float dac_v = bias_v + pilot_gen_next(&scan_pilot);
+                    dac8568_set_voltage(ctx.config->bias_dac_channel, dac_v);
+                    uint32_t t0 = HAL_GetTick();
+                    while (board_adc_drdy_read() != 0) {
+                        if ((HAL_GetTick() - t0) > 5) {
+                            drdy_abort = true;
+                            break;
+                        }
+                    }
+                    if (drdy_abort) { break; }
+                    ads131m02_sample_t smp;
+                    (void)ads131m02_read_sample(&smp);
+                }
+                if (drdy_abort) { break; }
+                dac8568_set_voltage(ctx.config->bias_dac_channel, bias_v);
+                board_delay_ms(2);
+            }
+
             /* Coherently accumulate H1 I/Q across n_blocks_per_step blocks */
-            float h1_i_sum = 0.0f, h1_q_sum = 0.0f;
+            float h1_i_blocks[20];
+            float h1_q_blocks[20];
 
             for (int b = 0; b < n_blocks_per_step && !drdy_abort; b++) {
                 goertzel_reset(&g_h1);
@@ -1253,15 +1525,16 @@ void app_handle_command(const char *cmd)
                 if (!drdy_abort) {
                     float h1_mag, h1_phase;
                     goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
-                    h1_i_sum += h1_mag * cosf(h1_phase);
-                    h1_q_sum += h1_mag * sinf(h1_phase);
+                    h1_i_blocks[b] = h1_mag * cosf(h1_phase);
+                    h1_q_blocks[b] = h1_mag * sinf(h1_phase);
                 }
             }
 
             if (drdy_abort) { break; }
 
-            float h1_avg = sqrtf(h1_i_sum * h1_i_sum + h1_q_sum * h1_q_sum)
-                           / (float)n_blocks_per_step;
+            float h1_i = robust_meanf_local(h1_i_blocks, n_blocks_per_step);
+            float h1_q = robust_meanf_local(h1_q_blocks, n_blocks_per_step);
+            float h1_avg = sqrtf(h1_i * h1_i + h1_q * h1_q);
             scan_bias_buf[steps_done] = bias_v;
             scan_h1_buf[steps_done]   = h1_avg;
             steps_done++;

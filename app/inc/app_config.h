@@ -21,6 +21,16 @@ typedef struct {
     float bias_quad_pos_v;           /**< Rising-slope quadrature anchor (V) */
     float bias_quad_neg_v;           /**< Falling-slope quadrature anchor (V) */
 
+    /* Harmonic-axis calibration used by the phase-vector controller */
+    float cal_h1_offset;            /**< H1 signed offset at zero-crossings */
+    float cal_h2_offset;            /**< H2 signed offset at quadrature points */
+    float cal_h1_axis;              /**< H1 axis amplitude at quadrature (raw signed units) */
+    float cal_h2_axis;              /**< H2 axis amplitude at extrema (raw signed units) */
+    float cal_h1_axis_sign;         /**< Sign that maps H1 axis to +sin(phi) */
+    float cal_h2_axis_sign;         /**< Sign that maps H2 axis to +cos(phi) */
+    float cal_pilot_amplitude_v;    /**< Pilot peak amplitude used during axis calibration */
+    bool  cal_harmonics_valid;      /**< True after successful harmonic-axis calibration */
+
     /* Control parameters */
     float kp;                   /**< PID proportional gain */
     float ki;                   /**< PID integral gain */

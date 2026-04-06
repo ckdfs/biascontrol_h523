@@ -11,7 +11,7 @@
 | [spec-00-hardware](spec-00-hardware.md) | **Reference** | Hardware pin mapping, signal chain, CubeMX config, NVIC, DMA |
 | [spec-01-bringup](spec-01-bringup.md) | **COMPLETE** ✅ | Board bring-up: DAC8568, ADS131M02, USART1 drivers |
 | [spec-02-dsp-pipeline](spec-02-dsp-pipeline.md) | **COMPLETE** ✅ | Pilot tone + Goertzel extraction + Vπ characterization |
-| [spec-03-mzm-quad](spec-03-mzm-quad.md) | **In Progress** | MZM quadrature closed-loop control |
+| [spec-03-mzm-quad](spec-03-mzm-quad.md) | **In Progress (~90%)** | MZM quadrature closed-loop control |
 | [spec-04-robustness](spec-04-robustness.md) | Pending | Multi-bias-point, robustness, tuning interface |
 | [spec-05-multi-modulator](spec-05-multi-modulator.md) | Future | DDMZM, DPMZM, DPQPSK, PM support |
 
@@ -54,3 +54,5 @@ PD → TIA(OPA140) → ADS131M02 CH0 → Goertzel(f0, 2f0)
 - Scan raw data and derived plots live under `docs/scans/`
 - Raw UART captures: `docs/scans/raw/`
 - Generated figures: `docs/scans/plots/`
+- 2026-04-06 long-run summary: `docs/scans/raw/lock_response_5min_summary_2026-04-06.csv`
+  and `docs/scans/plots/lock_response_5min_summary_2026-04-06.png`

@@ -1,0 +1,3295 @@
+
+# host> stop
+
+# host> set bp quad
+[bp] Quadrature
+
+# host> start
+
+# host> status @ 0.000s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0000V (-180.0dBc vs DC)  phase=0.000rad
+H2:    0.0038V (71.5dBc vs DC)  phase=-1.180rad
+DC:    0.6561V
+Err:   0.0000
+
+# host> status @ 1.003s
+State: LOCKING
+Bias:  1.234 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1111V (-15.2dBc vs DC)  phase=1.002rad
+H2:    0.0028V (-47.0dBc vs DC)  phase=-1.157rad
+DC:    0.7830V
+Err:   0.4695
+
+# host> status @ 2.004s
+State: LOCKING
+Bias:  2.123 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0373V (-25.5dBc vs DC)  phase=0.986rad
+H2:    0.0018V (-52.0dBc vs DC)  phase=-1.118rad
+DC:    0.8313V
+Err:   0.4849
+
+# host> status @ 3.009s
+State: LOCKING
+Bias:  0.098 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0325V (-26.6dBc vs DC)  phase=0.985rad
+H2:    0.0011V (-55.8dBc vs DC)  phase=-1.090rad
+DC:    0.6944V
+Err:   0.5005
+
+# host> status @ 4.010s
+State: LOCKING
+Bias:  2.370 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0188V (-33.4dBc vs DC)  phase=0.939rad
+H2:    0.0006V (-62.9dBc vs DC)  phase=-1.035rad
+DC:    0.8778V
+Err:   0.4043
+
+# host> status @ 5.012s
+State: LOCKING
+Bias:  0.331 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0645V (-21.1dBc vs DC)  phase=0.988rad
+H2:    0.0005V (-63.6dBc vs DC)  phase=-1.061rad
+DC:    0.7352V
+Err:   0.5532
+
+# host> status @ 6.014s
+State: LOCKING
+Bias:  2.478 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0188V (-34.1dBc vs DC)  phase=1.054rad
+H2:    0.0001V (-79.6dBc vs DC)  phase=-0.103rad
+DC:    0.9533V
+Err:   0.4327
+
+# host> status @ 7.015s
+State: LOCKING
+Bias:  0.611 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0722V (-22.4dBc vs DC)  phase=-2.134rad
+H2:    0.0001V (-77.1dBc vs DC)  phase=1.339rad
+DC:    0.9539V
+Err:   -1.0000
+
+# host> status @ 8.019s
+State: LOCKING
+Bias:  0.891 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2034V (-11.8dBc vs DC)  phase=0.997rad
+H2:    0.0003V (-68.2dBc vs DC)  phase=1.859rad
+DC:    0.7928V
+Err:   -0.1254
+
+# host> status @ 9.020s
+State: LOCKING
+Bias:  0.073 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2538V (-7.6dBc vs DC)  phase=0.999rad
+H2:    0.0003V (-67.3dBc vs DC)  phase=2.151rad
+DC:    0.6099V
+Err:   -0.1589
+
+# host> status @ 10.028s
+State: LOCKING
+Bias:  -0.685 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2540V (-3.9dBc vs DC)  phase=0.998rad
+H2:    0.0001V (-69.2dBc vs DC)  phase=2.978rad
+DC:    0.3968V
+Err:   -0.1518
+State: LOCKING
+Bias:  -0.685 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2540V (-3.9dBc vs DC)  phase=0.998rad
+H2:    0.0001V (-69.2dBc vs DC)  phase=2.978rad
+DC:    0.3968V
+Err:   -0.1518
+
+# host> status @ 11.034s
+State: LOCKING
+Bias:  -1.498 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2035V (0.0dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-61.4dBc vs DC)  phase=-2.421rad
+DC:    0.2027V
+Err:   -0.1765
+
+# host> status @ 12.039s
+State: LOCKING
+Bias:  -2.083 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1177V (5.3dBc vs DC)  phase=0.999rad
+H2:    0.0004V (-44.6dBc vs DC)  phase=-1.666rad
+DC:    0.0638V
+Err:   -0.0937
+
+# host> status @ 13.040s
+State: LOCKING
+Bias:  -1.466 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1591V (4.9dBc vs DC)  phase=1.008rad
+H2:    0.0005V (-44.3dBc vs DC)  phase=-1.378rad
+DC:    0.0901V
+Err:   0.1813
+
+# host> status @ 14.044s
+State: LOCKING
+Bias:  -0.690 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2411V (-0.9dBc vs DC)  phase=1.007rad
+H2:    0.0004V (-57.1dBc vs DC)  phase=-1.198rad
+DC:    0.2680V
+Err:   0.1578
+
+# host> status @ 15.045s
+State: LOCKING
+Bias:  0.057 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2645V (-5.1dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-69.1dBc vs DC)  phase=-0.620rad
+DC:    0.4739V
+Err:   0.1444
+
+# host> status @ 16.050s
+State: LOCKING
+Bias:  0.843 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2363V (-9.2dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-72.0dBc vs DC)  phase=0.692rad
+DC:    0.6822V
+Err:   0.1553
+
+# host> status @ 17.052s
+State: LOCKING
+Bias:  1.609 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1595V (-14.6dBc vs DC)  phase=1.009rad
+H2:    0.0003V (-68.2dBc vs DC)  phase=1.326rad
+DC:    0.8568V
+Err:   0.1453
+
+# host> status @ 18.058s
+State: LOCKING
+Bias:  1.962 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0636V (-23.5dBc vs DC)  phase=1.006rad
+H2:    0.0005V (-65.6dBc vs DC)  phase=1.587rad
+DC:    0.9504V
+Err:   -0.0428
+State: LOCKING
+Bias:  1.962 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0636V (-23.5dBc vs DC)  phase=1.006rad
+H2:    0.0005V (-65.6dBc vs DC)  phase=1.587rad
+DC:    0.9504V
+Err:   -0.0428
+
+# host> status @ 19.063s
+State: LOCKING
+Bias:  0.956 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1911V (-12.7dBc vs DC)  phase=0.996rad
+H2:    0.0005V (-63.5dBc vs DC)  phase=1.815rad
+DC:    0.8209V
+Err:   -0.1878
+
+# host> status @ 20.068s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1420V (-11.8dBc vs DC)  phase=0.990rad
+H2:    0.0027V (-46.3dBc vs DC)  phase=-1.389rad
+DC:    0.5531V
+Err:   0.4033
+
+# host> status @ 21.073s
+State: LOCKING
+Bias:  1.337 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1864V (-11.9dBc vs DC)  phase=1.011rad
+H2:    0.0020V (-51.1dBc vs DC)  phase=-1.354rad
+DC:    0.7325V
+Err:   0.3677
+
+# host> status @ 22.078s
+State: LOCKING
+Bias:  0.614 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0721V (-22.4dBc vs DC)  phase=-2.137rad
+H2:    0.0010V (-59.2dBc vs DC)  phase=-1.368rad
+DC:    0.9544V
+Err:   0.6181
+
+# host> status @ 23.083s
+State: LOCKING
+Bias:  2.543 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0343V (-27.8dBc vs DC)  phase=0.968rad
+H2:    0.0006V (-62.5dBc vs DC)  phase=-1.376rad
+DC:    0.8469V
+Err:   0.4164
+
+# host> status @ 24.088s
+State: LOCKING
+Bias:  1.863 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1014V (-19.2dBc vs DC)  phase=1.010rad
+H2:    0.0002V (-71.7dBc vs DC)  phase=-1.519rad
+DC:    0.9207V
+Err:   0.0368
+
+# host> status @ 25.093s
+State: LOCKING
+Bias:  0.948 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1839V (-13.1dBc vs DC)  phase=1.001rad
+H2:    0.0001V (-76.1dBc vs DC)  phase=2.921rad
+DC:    0.8302V
+Err:   -0.1889
+
+# host> status @ 26.098s
+State: LOCKING
+Bias:  0.049 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2491V (-7.7dBc vs DC)  phase=0.995rad
+H2:    0.0002V (-69.8dBc vs DC)  phase=-2.520rad
+DC:    0.6020V
+Err:   -0.1743
+State: LOCKING
+Bias:  0.049 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2491V (-7.7dBc vs DC)  phase=0.995rad
+H2:    0.0002V (-69.8dBc vs DC)  phase=-2.520rad
+DC:    0.6020V
+Err:   -0.1743
+
+# host> status @ 27.100s
+State: LOCKING
+Bias:  -0.697 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2529V (-4.0dBc vs DC)  phase=0.998rad
+H2:    0.0003V (-62.8dBc vs DC)  phase=-2.109rad
+DC:    0.4013V
+Err:   -0.1648
+
+# host> status @ 28.103s
+State: LOCKING
+Bias:  -1.469 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2035V (0.2dBc vs DC)  phase=1.000rad
+H2:    0.0004V (-53.7dBc vs DC)  phase=-1.851rad
+DC:    0.1997V
+Err:   -0.1584
+
+# host> status @ 29.104s
+State: LOCKING
+Bias:  -2.206 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1134V (5.6dBc vs DC)  phase=0.999rad
+H2:    0.0005V (-41.1dBc vs DC)  phase=-1.676rad
+DC:    0.0597V
+Err:   -0.1443
+
+# host> status @ 30.107s
+State: LOCKING
+Bias:  -1.564 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1463V (5.7dBc vs DC)  phase=1.006rad
+H2:    0.0007V (-40.8dBc vs DC)  phase=-1.431rad
+DC:    0.0756V
+Err:   0.1799
+
+# host> status @ 31.109s
+State: LOCKING
+Bias:  -0.678 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2374V (-1.0dBc vs DC)  phase=1.006rad
+H2:    0.0005V (-54.2dBc vs DC)  phase=-1.281rad
+DC:    0.2654V
+Err:   0.1702
+
+# host> status @ 32.112s
+State: LOCKING
+Bias:  0.073 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2647V (-5.0dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-65.4dBc vs DC)  phase=-0.949rad
+DC:    0.4726V
+Err:   0.1549
+
+# host> status @ 33.114s
+State: LOCKING
+Bias:  0.827 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2357V (-9.3dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-73.6dBc vs DC)  phase=0.584rad
+DC:    0.6852V
+Err:   0.1430
+
+# host> status @ 34.119s
+State: LOCKING
+Bias:  1.593 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1612V (-14.5dBc vs DC)  phase=1.008rad
+H2:    0.0003V (-69.2dBc vs DC)  phase=1.304rad
+DC:    0.8554V
+Err:   0.1399
+State: LOCKING
+Bias:  1.593 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1612V (-14.5dBc vs DC)  phase=1.008rad
+H2:    0.0003V (-69.2dBc vs DC)  phase=1.304rad
+DC:    0.8554V
+Err:   0.1399
+
+# host> status @ 35.122s
+State: LOCKING
+Bias:  2.117 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0607V (-23.9dBc vs DC)  phase=1.005rad
+H2:    0.0004V (-66.6dBc vs DC)  phase=1.558rad
+DC:    0.9515V
+Err:   0.0299
+
+# host> status @ 36.124s
+State: LOCKING
+Bias:  1.214 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1751V (-13.7dBc vs DC)  phase=1.000rad
+H2:    0.0004V (-65.9dBc vs DC)  phase=1.727rad
+DC:    0.8464V
+Err:   -0.1136
+
+# host> status @ 37.129s
+State: LOCKING
+Bias:  0.251 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2452V (-8.3dBc vs DC)  phase=0.997rad
+H2:    0.0003V (-67.5dBc vs DC)  phase=2.078rad
+DC:    0.6395V
+Err:   -0.1507
+
+# host> status @ 38.134s
+State: LOCKING
+Bias:  -0.536 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2577V (-4.6dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-68.2dBc vs DC)  phase=2.568rad
+DC:    0.4357V
+Err:   -0.1563
+
+# host> status @ 39.138s
+State: LOCKING
+Bias:  -1.297 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2143V (-0.7dBc vs DC)  phase=0.997rad
+H2:    0.0002V (-63.1dBc vs DC)  phase=-2.301rad
+DC:    0.2321V
+Err:   -0.1446
+
+# host> status @ 40.142s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0055V (-35.4dBc vs DC)  phase=0.622rad
+H2:    0.0030V (-40.9dBc vs DC)  phase=2.051rad
+DC:    0.3263V
+Err:   -0.5012
+
+# host> status @ 41.147s
+State: LOCKING
+Bias:  -1.948 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1244V (-3.9dBc vs DC)  phase=0.988rad
+H2:    0.0018V (-40.8dBc vs DC)  phase=2.103rad
+DC:    0.1943V
+Err:   -0.4562
+
+# host> status @ 42.151s
+State: LOCKING
+Bias:  -2.927 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0031V (-33.5dBc vs DC)  phase=1.035rad
+H2:    0.0011V (-42.7dBc vs DC)  phase=2.209rad
+DC:    0.1455V
+Err:   1.0000
+State: LOCKING
+Bias:  -2.927 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0031V (-33.5dBc vs DC)  phase=1.035rad
+H2:    0.0011V (-42.7dBc vs DC)  phase=2.209rad
+DC:    0.1455V
+Err:   1.0000
+
+# host> status @ 43.155s
+State: LOCKING
+Bias:  -2.433 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0034V (-36.9dBc vs DC)  phase=0.432rad
+H2:    0.0007V (-50.6dBc vs DC)  phase=2.349rad
+DC:    0.2377V
+Err:   -0.5020
+
+# host> status @ 44.160s
+State: LOCKING
+Bias:  -0.440 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0158V (-1.8dBc vs DC)  phase=-2.067rad
+H2:    0.0004V (-34.5dBc vs DC)  phase=2.750rad
+DC:    0.0195V
+Err:   -0.5218
+
+# host> status @ 45.164s
+State: LOCKING
+Bias:  -2.956 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0040V (-30.9dBc vs DC)  phase=1.004rad
+H2:    0.0003V (-54.3dBc vs DC)  phase=2.913rad
+DC:    0.1396V
+Err:   1.0000
+
+# host> status @ 46.167s
+State: LOCKING
+Bias:  -2.456 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0047V (-33.7dBc vs DC)  phase=0.533rad
+H2:    0.0002V (-59.9dBc vs DC)  phase=-3.029rad
+DC:    0.2311V
+Err:   -0.4995
+
+# host> status @ 47.169s
+State: LOCKING
+Bias:  -0.464 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0207V (1.0dBc vs DC)  phase=-2.087rad
+H2:    0.0003V (-36.8dBc vs DC)  phase=-2.198rad
+DC:    0.0185V
+Err:   -0.5555
+
+# host> status @ 48.172s
+State: LOCKING
+Bias:  -2.975 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0044V (-29.7dBc vs DC)  phase=0.992rad
+H2:    0.0002V (-55.9dBc vs DC)  phase=-2.402rad
+DC:    0.1360V
+Err:   1.0000
+
+# host> status @ 49.176s
+State: LOCKING
+Bias:  -2.466 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0058V (-31.9dBc vs DC)  phase=0.646rad
+H2:    0.0002V (-60.8dBc vs DC)  phase=-2.500rad
+DC:    0.2274V
+Err:   -0.4967
+
+# host> status @ 50.180s
+State: LOCKING
+Bias:  -0.475 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0234V (2.2dBc vs DC)  phase=-2.095rad
+H2:    0.0003V (-35.6dBc vs DC)  phase=-1.963rad
+DC:    0.0181V
+Err:   -0.5827
+State: LOCKING
+Bias:  -0.475 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0234V (2.2dBc vs DC)  phase=-2.095rad
+H2:    0.0003V (-35.6dBc vs DC)  phase=-1.963rad
+DC:    0.2267V
+Err:   -0.5827
+
+# host> status @ 51.182s
+State: LOCKING
+Bias:  -2.980 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0047V (-29.2dBc vs DC)  phase=0.988rad
+H2:    0.0002V (-56.0dBc vs DC)  phase=-2.339rad
+DC:    0.1341V
+Err:   1.0000
+
+# host> status @ 52.186s
+State: LOCKING
+Bias:  -2.466 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0071V (-30.0dBc vs DC)  phase=0.745rad
+H2:    0.0002V (-61.0dBc vs DC)  phase=-2.648rad
+DC:    0.2258V
+Err:   -0.4948
+
+# host> status @ 53.188s
+State: LOCKING
+Bias:  -0.475 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0244V (2.7dBc vs DC)  phase=-2.097rad
+H2:    0.0003V (-36.3dBc vs DC)  phase=-2.028rad
+DC:    0.0179V
+Err:   -0.5809
+
+# host> status @ 54.190s
+State: LOCKING
+Bias:  -2.979 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0047V (-29.0dBc vs DC)  phase=0.983rad
+H2:    0.0002V (-56.4dBc vs DC)  phase=-2.617rad
+DC:    0.1333V
+Err:   1.0000
+
+# host> status @ 55.195s
+State: LOCKING
+Bias:  -2.465 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0069V (-30.3dBc vs DC)  phase=0.720rad
+H2:    0.0002V (-61.5dBc vs DC)  phase=-2.871rad
+DC:    0.2252V
+Err:   -0.4951
+
+# host> status @ 56.200s
+State: LOCKING
+Bias:  -0.474 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0249V (2.9dBc vs DC)  phase=-2.098rad
+H2:    0.0002V (-37.5dBc vs DC)  phase=-2.144rad
+DC:    0.2250V
+Err:   -0.5782
+
+# host> status @ 57.207s
+State: LOCKING
+Bias:  -2.975 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0248V (2.9dBc vs DC)  phase=-2.098rad
+H2:    0.0002V (-37.9dBc vs DC)  phase=-2.139rad
+DC:    0.0178V
+Err:   1.0000
+
+# host> status @ 58.211s
+State: LOCKING
+Bias:  -2.463 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0048V (-28.8dBc vs DC)  phase=0.983rad
+H2:    0.0002V (-57.2dBc vs DC)  phase=-2.947rad
+DC:    0.1329V
+Err:   -0.4954
+State: LOCKING
+Bias:  -2.975 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0048V (-28.8dBc vs DC)  phase=0.983rad
+H2:    0.0002V (-57.2dBc vs DC)  phase=-2.947rad
+DC:    0.1329V
+Err:   1.0000
+
+# host> status @ 59.214s
+State: LOCKING
+Bias:  -0.471 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0071V (-30.0dBc vs DC)  phase=0.741rad
+H2:    0.0002V (-60.3dBc vs DC)  phase=3.031rad
+DC:    0.2248V
+Err:   -0.5685
+
+# host> status @ 60.218s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2574V (-5.0dBc vs DC)  phase=1.004rad
+H2:    0.0028V (-44.1dBc vs DC)  phase=1.686rad
+DC:    0.4556V
+Err:   -0.2838
+
+# host> status @ 61.223s
+State: LOCKING
+Bias:  -1.126 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2225V (-1.7dBc vs DC)  phase=0.998rad
+H2:    0.0017V (-43.9dBc vs DC)  phase=1.657rad
+DC:    0.2707V
+Err:   -0.1835
+
+# host> status @ 62.227s
+State: LOCKING
+Bias:  -1.809 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1494V (3.3dBc vs DC)  phase=0.999rad
+H2:    0.0010V (-40.1dBc vs DC)  phase=1.626rad
+DC:    0.1025V
+Err:   -0.1123
+
+# host> status @ 63.236s
+State: LOCKING
+Bias:  -1.425 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1566V (4.7dBc vs DC)  phase=1.006rad
+H2:    0.0005V (-44.8dBc vs DC)  phase=1.412rad
+DC:    0.0908V
+Err:   0.1494
+
+# host> status @ 64.241s
+State: LOCKING
+Bias:  -0.686 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2391V (-0.6dBc vs DC)  phase=1.007rad
+H2:    0.0004V (-55.4dBc vs DC)  phase=1.257rad
+DC:    0.2573V
+Err:   0.1580
+
+# host> status @ 65.244s
+State: LOCKING
+Bias:  0.065 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2648V (-4.8dBc vs DC)  phase=1.007rad
+H2:    0.0005V (-59.4dBc vs DC)  phase=1.282rad
+DC:    0.4620V
+Err:   0.1495
+
+# host> status @ 66.249s
+State: LOCKING
+Bias:  0.855 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2385V (-9.0dBc vs DC)  phase=1.006rad
+H2:    0.0006V (-61.6dBc vs DC)  phase=1.319rad
+DC:    0.6726V
+Err:   0.1612
+State: LOCKING
+Bias:  0.855 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2385V (-9.0dBc vs DC)  phase=1.006rad
+H2:    0.0006V (-61.6dBc vs DC)  phase=1.319rad
+DC:    0.6726V
+Err:   0.1612
+
+# host> status @ 67.255s
+State: LOCKING
+Bias:  1.627 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1663V (-14.1dBc vs DC)  phase=1.007rad
+H2:    0.0006V (-62.6dBc vs DC)  phase=1.414rad
+DC:    0.8454V
+Err:   0.1637
+
+# host> status @ 68.260s
+State: LOCKING
+Bias:  1.910 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0869V (-20.7dBc vs DC)  phase=1.005rad
+H2:    0.0007V (-62.0dBc vs DC)  phase=1.581rad
+DC:    0.9383V
+Err:   -0.0307
+
+# host> status @ 69.265s
+State: LOCKING
+Bias:  0.971 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1900V (-12.8dBc vs DC)  phase=0.999rad
+H2:    0.0008V (-60.3dBc vs DC)  phase=1.754rad
+DC:    0.8267V
+Err:   -0.2039
+
+# host> status @ 70.270s
+State: LOCKING
+Bias:  0.244 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2499V (-8.1dBc vs DC)  phase=0.998rad
+H2:    0.0005V (-61.8dBc vs DC)  phase=1.822rad
+DC:    0.6350V
+Err:   -0.1468
+
+# host> status @ 71.275s
+State: LOCKING
+Bias:  -0.540 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2575V (-4.4dBc vs DC)  phase=0.999rad
+H2:    0.0004V (-61.6dBc vs DC)  phase=1.991rad
+DC:    0.4288V
+Err:   -0.1583
+
+# host> status @ 72.280s
+State: LOCKING
+Bias:  -1.290 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2142V (-0.5dBc vs DC)  phase=0.999rad
+H2:    0.0001V (-66.0dBc vs DC)  phase=2.800rad
+DC:    0.2271V
+Err:   -0.1438
+
+# host> status @ 73.281s
+State: LOCKING
+Bias:  -2.025 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1313V (4.6dBc vs DC)  phase=1.000rad
+H2:    0.0002V (-52.1dBc vs DC)  phase=-1.882rad
+DC:    0.0775V
+Err:   -0.1328
+
+# host> status @ 74.286s
+State: LOCKING
+Bias:  -1.224 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1883V (3.2dBc vs DC)  phase=1.009rad
+H2:    0.0004V (-49.3dBc vs DC)  phase=-1.287rad
+DC:    0.1307V
+Err:   0.1818
+State: LOCKING
+Bias:  -1.224 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1883V (3.2dBc vs DC)  phase=1.009rad
+H2:    0.0004V (-49.3dBc vs DC)  phase=-1.287rad
+DC:    0.1307V
+Err:   0.1818
+
+# host> status @ 75.292s
+State: LOCKING
+Bias:  -0.385 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2545V (-2.4dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-61.9dBc vs DC)  phase=-0.994rad
+DC:    0.3369V
+Err:   0.1600
+
+# host> status @ 76.296s
+State: LOCKING
+Bias:  0.371 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2597V (-6.6dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-71.9dBc vs DC)  phase=0.206rad
+DC:    0.5529V
+Err:   0.1483
+
+# host> status @ 77.300s
+State: LOCKING
+Bias:  1.150 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2137V (-10.9dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-69.9dBc vs DC)  phase=1.061rad
+DC:    0.7527V
+Err:   0.1536
+
+# host> status @ 78.304s
+State: LOCKING
+Bias:  1.922 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1259V (-17.1dBc vs DC)  phase=1.007rad
+H2:    0.0004V (-67.4dBc vs DC)  phase=1.390rad
+DC:    0.8996V
+Err:   0.1556
+
+# host> status @ 79.305s
+State: LOCKING
+Bias:  1.609 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1212V (-17.6dBc vs DC)  phase=1.002rad
+H2:    0.0005V (-64.6dBc vs DC)  phase=1.670rad
+DC:    0.9164V
+Err:   -0.1321
+
+# host> status @ 80.310s
+State: LOCKING
+Bias:  0.861 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2078V (-11.6dBc vs DC)  phase=0.998rad
+H2:    0.0005V (-64.3dBc vs DC)  phase=1.797rad
+DC:    0.7863V
+Err:   -0.1471
+
+# host> status @ 81.311s
+State: LOCKING
+Bias:  0.075 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2549V (-7.4dBc vs DC)  phase=0.999rad
+H2:    0.0004V (-63.8dBc vs DC)  phase=1.949rad
+DC:    0.5994V
+Err:   -0.1585
+
+# host> status @ 82.316s
+State: LOCKING
+Bias:  -0.690 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2533V (-3.7dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-64.9dBc vs DC)  phase=2.262rad
+DC:    0.3898V
+Err:   -0.1568
+State: LOCKING
+Bias:  -0.690 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2533V (-3.7dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-64.9dBc vs DC)  phase=2.262rad
+DC:    0.3898V
+Err:   -0.1568
+
+# host> status @ 83.321s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2577V (-5.2dBc vs DC)  phase=1.005rad
+H2:    0.0014V (-50.3dBc vs DC)  phase=1.438rad
+DC:    0.4673V
+Err:   0.1936
+
+# host> status @ 84.326s
+State: LOCKING
+Bias:  0.835 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2358V (-9.3dBc vs DC)  phase=1.006rad
+H2:    0.0013V (-54.1dBc vs DC)  phase=1.472rad
+DC:    0.6871V
+Err:   0.1572
+
+# host> status @ 85.327s
+State: LOCKING
+Bias:  1.595 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1633V (-14.3dBc vs DC)  phase=1.009rad
+H2:    0.0013V (-56.6dBc vs DC)  phase=1.505rad
+DC:    0.8523V
+Err:   0.1450
+
+# host> status @ 86.328s
+State: LOCKING
+Bias:  1.722 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0874V (-20.6dBc vs DC)  phase=1.004rad
+H2:    0.0012V (-57.5dBc vs DC)  phase=1.597rad
+DC:    0.9386V
+Err:   -0.1164
+
+# host> status @ 87.333s
+State: LOCKING
+Bias:  0.886 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2060V (-11.6dBc vs DC)  phase=0.998rad
+H2:    0.0010V (-57.9dBc vs DC)  phase=1.666rad
+DC:    0.7849V
+Err:   -0.1330
+
+# host> status @ 88.338s
+State: LOCKING
+Bias:  0.073 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2551V (-7.4dBc vs DC)  phase=1.000rad
+H2:    0.0008V (-57.6dBc vs DC)  phase=1.755rad
+DC:    0.6014V
+Err:   -0.1590
+
+# host> status @ 89.341s
+State: LOCKING
+Bias:  -0.694 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2529V (-3.8dBc vs DC)  phase=0.998rad
+H2:    0.0005V (-58.2dBc vs DC)  phase=1.865rad
+DC:    0.3902V
+Err:   -0.1558
+
+# host> status @ 90.346s
+State: LOCKING
+Bias:  -1.468 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2021V (0.3dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-58.8dBc vs DC)  phase=2.095rad
+DC:    0.1963V
+Err:   -0.1588
+State: LOCKING
+Bias:  -1.468 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2021V (0.3dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-58.8dBc vs DC)  phase=2.095rad
+DC:    0.1963V
+Err:   -0.1588
+
+# host> status @ 91.356s
+State: LOCKING
+Bias:  -2.191 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1108V (5.8dBc vs DC)  phase=0.998rad
+H2:    0.0001V (-55.1dBc vs DC)  phase=-2.098rad
+DC:    0.0568V
+Err:   -0.1346
+
+# host> status @ 92.361s
+State: LOCKING
+Bias:  -1.550 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1394V (5.9dBc vs DC)  phase=1.005rad
+H2:    0.0004V (-46.0dBc vs DC)  phase=-1.294rad
+DC:    0.0711V
+Err:   0.1896
+
+# host> status @ 93.366s
+State: LOCKING
+Bias:  -0.679 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2400V (-0.8dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-60.3dBc vs DC)  phase=-0.976rad
+DC:    0.2637V
+Err:   0.1644
+
+# host> status @ 94.369s
+State: LOCKING
+Bias:  0.069 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2644V (-5.0dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-70.2dBc vs DC)  phase=-0.077rad
+DC:    0.4684V
+Err:   0.1527
+
+# host> status @ 95.374s
+State: LOCKING
+Bias:  0.859 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2366V (-9.1dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-70.5dBc vs DC)  phase=0.802rad
+DC:    0.6773V
+Err:   0.1648
+
+# host> status @ 96.374s
+State: LOCKING
+Bias:  1.606 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1621V (-14.4dBc vs DC)  phase=1.009rad
+H2:    0.0004V (-67.4dBc vs DC)  phase=1.341rad
+DC:    0.8528V
+Err:   0.1463
+
+# host> status @ 97.378s
+State: LOCKING
+Bias:  2.205 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0618V (-23.7dBc vs DC)  phase=1.005rad
+H2:    0.0005V (-65.6dBc vs DC)  phase=1.542rad
+DC:    0.9498V
+Err:   0.0731
+
+# host> status @ 98.379s
+State: LOCKING
+Bias:  1.141 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1761V (-13.6dBc vs DC)  phase=1.000rad
+H2:    0.0006V (-63.5dBc vs DC)  phase=1.762rad
+DC:    0.8474V
+Err:   -0.1703
+State: LOCKING
+Bias:  1.141 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1761V (-13.6dBc vs DC)  phase=1.000rad
+H2:    0.0006V (-63.5dBc vs DC)  phase=1.762rad
+DC:    0.8474V
+Err:   -0.1703
+
+# host> status @ 99.380s
+State: LOCKING
+Bias:  0.390 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2406V (-9.1dBc vs DC)  phase=1.000rad
+H2:    0.0004V (-63.7dBc vs DC)  phase=1.872rad
+DC:    0.6824V
+Err:   -0.1554
+
+# host> status @ 100.385s
+State: LOCKING
+Bias:  -0.378 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2598V (-5.2dBc vs DC)  phase=0.999rad
+H2:    0.0003V (-64.8dBc vs DC)  phase=2.101rad
+DC:    0.4748V
+Err:   -0.1516
+
+# host> status @ 101.391s
+State: LOCKING
+Bias:  -1.155 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2278V (-1.5dBc vs DC)  phase=0.999rad
+H2:    0.0001V (-65.9dBc vs DC)  phase=2.756rad
+DC:    0.2713V
+Err:   -0.1584
+
+# host> status @ 102.392s
+State: LOCKING
+Bias:  -1.894 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1491V (3.2dBc vs DC)  phase=0.998rad
+H2:    0.0002V (-53.8dBc vs DC)  phase=-1.903rad
+DC:    0.1027V
+Err:   -0.1351
+
+# host> status @ 103.397s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2587V (-4.9dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-69.6dBc vs DC)  phase=-2.106rad
+DC:    0.4547V
+Err:   -0.0903
+
+# host> status @ 104.399s
+State: LOCKING
+Bias:  0.199 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2574V (-5.8dBc vs DC)  phase=1.006rad
+H2:    0.0004V (-61.4dBc vs DC)  phase=-1.302rad
+DC:    0.5046V
+Err:   0.1271
+
+# host> status @ 105.403s
+State: LOCKING
+Bias:  1.000 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2245V (-10.2dBc vs DC)  phase=1.008rad
+H2:    0.0002V (-72.7dBc vs DC)  phase=-0.764rad
+DC:    0.7595V
+Err:   0.1516
+
+# host> status @ 106.408s
+State: LOCKING
+Bias:  1.756 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1434V (-15.8dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-74.4dBc vs DC)  phase=1.152rad
+DC:    0.9026V
+Err:   0.1468
+State: LOCKING
+Bias:  1.921 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1241V (-17.2dBc vs DC)  phase=1.006rad
+H2:    0.0002V (-74.7dBc vs DC)  phase=1.152rad
+DC:    0.9026V
+Err:   0.1559
+
+# host> status @ 107.414s
+State: LOCKING
+Bias:  1.673 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1311V (-16.8dBc vs DC)  phase=0.997rad
+H2:    0.0005V (-65.8dBc vs DC)  phase=1.795rad
+DC:    0.9122V
+Err:   -0.1781
+
+# host> status @ 108.414s
+State: LOCKING
+Bias:  0.865 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2192V (-10.8dBc vs DC)  phase=1.001rad
+H2:    0.0004V (-66.6dBc vs DC)  phase=1.919rad
+DC:    0.7566V
+Err:   -0.1442
+
+# host> status @ 109.415s
+State: LOCKING
+Bias:  0.076 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2585V (-6.7dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-67.4dBc vs DC)  phase=2.185rad
+DC:    0.5602V
+Err:   -0.1573
+
+# host> status @ 110.421s
+State: LOCKING
+Bias:  -0.841 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2471V (-3.0dBc vs DC)  phase=0.999rad
+H2:    0.0001V (-68.1dBc vs DC)  phase=2.926rad
+DC:    0.3503V
+Err:   -0.1526
+
+# host> status @ 111.427s
+State: LOCKING
+Bias:  -1.590 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1843V (1.1dBc vs DC)  phase=0.998rad
+H2:    0.0002V (-57.4dBc vs DC)  phase=-1.980rad
+DC:    0.1615V
+Err:   -0.1366
+
+# host> status @ 112.427s
+State: LOCKING
+Bias:  -2.180 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0950V (7.3dBc vs DC)  phase=1.000rad
+H2:    0.0004V (-40.3dBc vs DC)  phase=-1.618rad
+DC:    0.0409V
+Err:   -0.0627
+
+# host> status @ 113.432s
+State: LOCKING
+Bias:  -1.117 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2034V (1.9dBc vs DC)  phase=1.009rad
+H2:    0.0005V (-50.2dBc vs DC)  phase=-1.300rad
+DC:    0.1629V
+Err:   0.1811
+
+# host> status @ 114.438s
+State: LOCKING
+Bias:  -0.371 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2554V (-2.6dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-60.1dBc vs DC)  phase=-1.101rad
+DC:    0.3430V
+Err:   0.1651
+State: LOCKING
+Bias:  -0.371 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2554V (-2.6dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-60.1dBc vs DC)  phase=-1.101rad
+DC:    0.3430V
+Err:   0.1651
+
+# host> status @ 115.444s
+State: LOCKING
+Bias:  0.373 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2598V (-6.6dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-72.0dBc vs DC)  phase=-0.185rad
+DC:    0.5579V
+Err:   0.1492
+
+# host> status @ 116.448s
+State: LOCKING
+Bias:  1.142 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2121V (-11.0dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-71.0dBc vs DC)  phase=1.018rad
+DC:    0.7565V
+Err:   0.1495
+
+# host> status @ 117.453s
+State: LOCKING
+Bias:  1.922 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1242V (-17.2dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-68.5dBc vs DC)  phase=1.369rad
+DC:    0.9014V
+Err:   0.1568
+
+# host> status @ 118.455s
+State: LOCKING
+Bias:  1.449 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1354V (-16.5dBc vs DC)  phase=0.998rad
+H2:    0.0006V (-64.2dBc vs DC)  phase=1.724rad
+DC:    0.9072V
+Err:   -0.1770
+
+# host> status @ 119.460s
+State: LOCKING
+Bias:  0.689 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2204V (-10.7dBc vs DC)  phase=0.999rad
+H2:    0.0005V (-64.3dBc vs DC)  phase=1.838rad
+DC:    0.7556V
+Err:   -0.1564
+
+# host> status @ 120.461s
+State: LOCKING
+Bias:  -0.060 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2587V (-6.7dBc vs DC)  phase=0.998rad
+H2:    0.0003V (-65.2dBc vs DC)  phase=2.020rad
+DC:    0.5618V
+Err:   -0.1478
+
+# host> status @ 121.467s
+State: LOCKING
+Bias:  -0.858 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2461V (-3.1dBc vs DC)  phase=0.999rad
+H2:    0.0002V (-65.6dBc vs DC)  phase=2.470rad
+DC:    0.3523V
+Err:   -0.1643
+
+# host> status @ 122.472s
+State: LOCKING
+Bias:  -1.597 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1844V (1.1dBc vs DC)  phase=0.998rad
+H2:    0.0002V (-59.1dBc vs DC)  phase=-2.084rad
+DC:    0.1617V
+Err:   -0.1390
+State: LOCKING
+Bias:  -1.597 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1844V (1.1dBc vs DC)  phase=0.998rad
+H2:    0.0002V (-59.1dBc vs DC)  phase=-2.084rad
+DC:    0.1617V
+Err:   -0.1390
+
+# host> status @ 123.472s
+State: LOCKING
+Bias:  -1.662 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1386V (6.0dBc vs DC)  phase=1.006rad
+H2:    0.0005V (-43.7dBc vs DC)  phase=-1.466rad
+DC:    0.0699V
+Err:   0.1029
+
+# host> status @ 124.478s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2579V (-5.0dBc vs DC)  phase=1.006rad
+H2:    0.0017V (-48.5dBc vs DC)  phase=1.315rad
+DC:    0.4599V
+Err:   0.3238
+
+# host> status @ 125.481s
+State: LOCKING
+Bias:  1.685 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1764V (-13.3dBc vs DC)  phase=1.010rad
+H2:    0.0016V (-54.0dBc vs DC)  phase=1.337rad
+DC:    0.8127V
+Err:   0.3552
+
+# host> status @ 126.482s
+State: LOCKING
+Bias:  2.188 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0977V (-17.9dBc vs DC)  phase=0.989rad
+H2:    0.0016V (-53.9dBc vs DC)  phase=1.480rad
+DC:    0.7708V
+Err:   0.3025
+
+# host> status @ 127.484s
+State: LOCKING
+Bias:  1.777 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0983V (-19.5dBc vs DC)  phase=1.011rad
+H2:    0.0016V (-55.0dBc vs DC)  phase=1.569rad
+DC:    0.9245V
+Err:   0.0076
+
+# host> status @ 128.484s
+State: LOCKING
+Bias:  0.989 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1915V (-12.7dBc vs DC)  phase=1.000rad
+H2:    0.0014V (-55.2dBc vs DC)  phase=1.646rad
+DC:    0.8234V
+Err:   -0.1596
+
+# host> status @ 129.489s
+State: LOCKING
+Bias:  0.244 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2487V (-8.3dBc vs DC)  phase=0.999rad
+H2:    0.0011V (-55.4dBc vs DC)  phase=1.691rad
+DC:    0.6443V
+Err:   -0.1499
+
+# host> status @ 130.494s
+State: LOCKING
+Bias:  -0.531 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2577V (-4.6dBc vs DC)  phase=0.999rad
+H2:    0.0008V (-55.1dBc vs DC)  phase=1.755rad
+DC:    0.4372V
+Err:   -0.1547
+State: LOCKING
+Bias:  -0.531 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2577V (-4.6dBc vs DC)  phase=0.999rad
+H2:    0.0008V (-55.1dBc vs DC)  phase=1.755rad
+DC:    0.4372V
+Err:   -0.1547
+
+# host> status @ 131.497s
+State: LOCKING
+Bias:  -1.302 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2138V (-0.7dBc vs DC)  phase=0.997rad
+H2:    0.0004V (-55.1dBc vs DC)  phase=1.844rad
+DC:    0.2313V
+Err:   -0.1463
+
+# host> status @ 132.499s
+State: LOCKING
+Bias:  -2.034 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1346V (4.4dBc vs DC)  phase=1.000rad
+H2:    0.0001V (-56.7dBc vs DC)  phase=2.128rad
+DC:    0.0814V
+Err:   -0.1382
+
+# host> status @ 133.500s
+State: LOCKING
+Bias:  -1.663 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1376V (6.4dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-50.5dBc vs DC)  phase=-1.213rad
+DC:    0.0656V
+Err:   0.1435
+
+# host> status @ 134.501s
+State: LOCKING
+Bias:  -0.859 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2302V (-0.0dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-63.0dBc vs DC)  phase=-0.745rad
+DC:    0.2315V
+Err:   0.1468
+
+# host> status @ 135.506s
+State: LOCKING
+Bias:  -0.075 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2629V (-4.2dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-69.1dBc vs DC)  phase=0.082rad
+DC:    0.4285V
+Err:   0.1577
+
+# host> status @ 136.512s
+State: LOCKING
+Bias:  0.690 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2466V (-8.3dBc vs DC)  phase=1.007rad
+H2:    0.0002V (-68.4dBc vs DC)  phase=0.976rad
+DC:    0.6416V
+Err:   0.1551
+
+# host> status @ 137.516s
+State: LOCKING
+Bias:  1.479 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1799V (-13.2dBc vs DC)  phase=1.007rad
+H2:    0.0004V (-67.3dBc vs DC)  phase=1.255rad
+DC:    0.8216V
+Err:   0.1690
+
+# host> status @ 138.519s
+State: LOCKING
+Bias:  2.185 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0804V (-21.4dBc vs DC)  phase=1.008rad
+H2:    0.0005V (-65.4dBc vs DC)  phase=1.500rad
+DC:    0.9392V
+Err:   0.1339
+State: LOCKING
+Bias:  2.185 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.0804V (-21.4dBc vs DC)  phase=1.008rad
+H2:    0.0005V (-65.4dBc vs DC)  phase=1.500rad
+DC:    0.9392V
+Err:   0.1339
+
+# host> status @ 139.524s
+State: LOCKING
+Bias:  1.125 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1714V (-14.0dBc vs DC)  phase=0.998rad
+H2:    0.0007V (-62.2dBc vs DC)  phase=1.776rad
+DC:    0.8594V
+Err:   -0.2100
+
+# host> status @ 140.531s
+State: LOCKING
+Bias:  0.390 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2408V (-9.0dBc vs DC)  phase=0.999rad
+H2:    0.0004V (-63.7dBc vs DC)  phase=1.864rad
+DC:    0.6825V
+Err:   -0.1524
+
+# host> status @ 141.535s
+State: LOCKING
+Bias:  -0.371 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2600V (-5.3dBc vs DC)  phase=0.999rad
+H2:    0.0003V (-64.4dBc vs DC)  phase=2.068rad
+DC:    0.4786V
+Err:   -0.1507
+
+# host> status @ 142.537s
+State: LOCKING
+Bias:  -1.152 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2289V (-1.5dBc vs DC)  phase=0.999rad
+H2:    0.0001V (-66.2dBc vs DC)  phase=2.775rad
+DC:    0.2706V
+Err:   -0.1534
+
+# host> status @ 143.542s
+State: LOCKING
+Bias:  -1.905 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.1495V (3.2dBc vs DC)  phase=0.998rad
+H2:    0.0002V (-53.9dBc vs DC)  phase=-1.919rad
+DC:    0.1037V
+Err:   -0.1397
+
+# host> status @ 144.545s
+State: LOCKING
+Bias:  -0.139 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2586V (-4.9dBc vs DC)  phase=1.007rad
+H2:    0.0003V (-63.3dBc vs DC)  phase=1.369rad
+DC:    0.4556V
+Err:   0.0709
+
+# host> status @ 145.550s
+State: LOCKING
+Bias:  0.119 V
+Lock:  NO
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2582V (-6.4dBc vs DC)  phase=1.002rad
+H2:    0.0003V (-63.8dBc vs DC)  phase=1.488rad
+DC:    0.5368V
+Err:   0.0322
+
+# host> status @ 146.553s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0003V (-64.3dBc vs DC)  phase=1.565rad
+DC:    0.5412V
+Err:   0.0006
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0003V (-64.3dBc vs DC)  phase=1.565rad
+DC:    0.5412V
+Err:   0.0006
+
+# host> status @ 147.553s
+State: LOCKED
+Bias:  0.093 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.3dBc vs DC)  phase=1.003rad
+H2:    0.0003V (-66.4dBc vs DC)  phase=1.531rad
+DC:    0.5375V
+Err:   0.0102
+
+# host> status @ 148.554s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0002V (-67.1dBc vs DC)  phase=1.573rad
+DC:    0.5401V
+Err:   -0.0024
+
+# host> status @ 149.560s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0002V (-68.7dBc vs DC)  phase=1.547rad
+DC:    0.5394V
+Err:   0.0037
+
+# host> status @ 150.565s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0002V (-70.3dBc vs DC)  phase=1.547rad
+DC:    0.5389V
+Err:   0.0028
+
+# host> status @ 151.570s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0001V (-71.2dBc vs DC)  phase=1.548rad
+DC:    0.5397V
+Err:   0.0022
+
+# host> status @ 152.574s
+State: LOCKED
+Bias:  0.084 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-71.4dBc vs DC)  phase=1.564rad
+DC:    0.5439V
+Err:   -0.0005
+
+# host> status @ 153.577s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-72.6dBc vs DC)  phase=1.552rad
+DC:    0.5398V
+Err:   0.0010
+
+# host> status @ 154.582s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0001V (-73.3dBc vs DC)  phase=1.550rad
+DC:    0.5405V
+Err:   0.0011
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0001V (-73.3dBc vs DC)  phase=1.550rad
+DC:    0.5405V
+Err:   0.0011
+
+# host> status @ 155.583s
+State: LOCKED
+Bias:  0.066 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-71.8dBc vs DC)  phase=1.611rad
+DC:    0.5429V
+Err:   -0.0084
+
+# host> status @ 156.587s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-72.2dBc vs DC)  phase=1.585rad
+DC:    0.5420V
+Err:   -0.0039
+
+# host> status @ 157.593s
+State: LOCKED
+Bias:  0.087 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-73.8dBc vs DC)  phase=1.529rad
+DC:    0.5414V
+Err:   0.0037
+
+# host> status @ 158.596s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-73.5dBc vs DC)  phase=1.580rad
+DC:    0.5429V
+Err:   -0.0030
+
+# host> status @ 159.601s
+State: LOCKED
+Bias:  0.088 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.488rad
+DC:    0.5396V
+Err:   0.0067
+
+# host> status @ 160.605s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.4dBc vs DC)  phase=1.561rad
+DC:    0.5420V
+Err:   -0.0005
+
+# host> status @ 161.610s
+State: LOCKED
+Bias:  0.094 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.438rad
+DC:    0.5431V
+Err:   0.0105
+
+# host> status @ 162.612s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.7dBc vs DC)  phase=1.589rad
+DC:    0.5397V
+Err:   -0.0039
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.538rad
+DC:    0.5397V
+Err:   0.0016
+
+# host> status @ 163.617s
+State: LOCKED
+Bias:  0.089 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.3dBc vs DC)  phase=1.004rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.522rad
+DC:    0.5421V
+Err:   0.0086
+
+# host> status @ 164.620s
+State: LOCKED
+Bias:  0.091 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.2dBc vs DC)  phase=1.597rad
+DC:    0.5449V
+Err:   0.0058
+
+# host> status @ 165.624s
+State: LOCKED
+Bias:  0.087 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2611V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.7dBc vs DC)  phase=1.597rad
+DC:    0.5429V
+Err:   0.0056
+
+# host> status @ 166.624s
+State: LOCKED
+Bias:  0.088 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.584rad
+DC:    0.5439V
+Err:   0.0035
+
+# host> status @ 167.629s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.5dBc vs DC)  phase=1.589rad
+DC:    0.5430V
+Err:   -0.0035
+
+# host> status @ 168.634s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.545rad
+DC:    0.5412V
+Err:   0.0004
+
+# host> status @ 169.639s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.558rad
+DC:    0.5432V
+Err:   -0.0005
+
+# host> status @ 170.644s
+State: LOCKED
+Bias:  0.087 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.464rad
+DC:    0.5395V
+Err:   0.0073
+State: LOCKED
+Bias:  0.087 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.464rad
+DC:    0.5395V
+Err:   0.0073
+
+# host> status @ 171.649s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.4dBc vs DC)  phase=1.565rad
+DC:    0.5438V
+Err:   -0.0010
+
+# host> status @ 172.653s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.560rad
+DC:    0.5416V
+Err:   -0.0005
+
+# host> status @ 173.657s
+State: LOCKED
+Bias:  0.084 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.3dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.520rad
+DC:    0.5419V
+Err:   0.0035
+
+# host> status @ 174.663s
+State: LOCKED
+Bias:  0.067 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-73.9dBc vs DC)  phase=1.616rad
+DC:    0.5435V
+Err:   -0.0075
+
+# host> status @ 175.664s
+State: LOCKED
+Bias:  0.072 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.5dBc vs DC)  phase=1.595rad
+DC:    0.5429V
+Err:   -0.0047
+
+# host> status @ 176.667s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.1dBc vs DC)  phase=1.596rad
+DC:    0.5434V
+Err:   -0.0049
+
+# host> status @ 177.674s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.554rad
+DC:    0.5411V
+Err:   -0.0000
+
+# host> status @ 178.678s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.580rad
+DC:    0.5436V
+Err:   -0.0028
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.580rad
+DC:    0.5436V
+Err:   -0.0028
+
+# host> status @ 179.679s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.3dBc vs DC)  phase=1.545rad
+DC:    0.5426V
+Err:   0.0007
+
+# host> status @ 180.680s
+State: LOCKED
+Bias:  0.089 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.7dBc vs DC)  phase=1.491rad
+DC:    0.5419V
+Err:   0.0049
+
+# host> status @ 181.685s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.3dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.6dBc vs DC)  phase=1.562rad
+DC:    0.5418V
+Err:   -0.0009
+
+# host> status @ 182.687s
+State: LOCKED
+Bias:  0.069 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.6dBc vs DC)  phase=1.607rad
+DC:    0.5428V
+Err:   -0.0056
+
+# host> status @ 183.692s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.577rad
+DC:    0.5419V
+Err:   -0.0024
+
+# host> status @ 184.697s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.3dBc vs DC)  phase=1.526rad
+DC:    0.5420V
+Err:   0.0017
+
+# host> status @ 185.702s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.3dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.5dBc vs DC)  phase=1.519rad
+DC:    0.5408V
+Err:   0.0021
+
+# host> status @ 186.707s
+State: LOCKED
+Bias:  0.064 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.4dBc vs DC)  phase=1.649rad
+DC:    0.5454V
+Err:   -0.0113
+State: LOCKED
+Bias:  0.064 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.4dBc vs DC)  phase=1.649rad
+DC:    0.5454V
+Err:   -0.0113
+
+# host> status @ 187.712s
+State: LOCKED
+Bias:  0.102 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2600V (-6.3dBc vs DC)  phase=1.005rad
+H2:    0.0000V (-81.5dBc vs DC)  phase=1.224rad
+DC:    0.5393V
+Err:   0.0163
+
+# host> status @ 188.713s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.547rad
+DC:    0.5425V
+Err:   0.0003
+
+# host> status @ 189.722s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.560rad
+DC:    0.5430V
+Err:   -0.0007
+
+# host> status @ 190.727s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.6dBc vs DC)  phase=1.519rad
+DC:    0.5415V
+Err:   0.0031
+
+# host> status @ 191.727s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.542rad
+DC:    0.5420V
+Err:   0.0013
+
+# host> status @ 192.730s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.9dBc vs DC)  phase=1.596rad
+DC:    0.5446V
+Err:   -0.0047
+
+# host> status @ 193.731s
+State: LOCKED
+Bias:  0.086 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.498rad
+DC:    0.5420V
+Err:   0.0049
+
+# host> status @ 194.736s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.566rad
+DC:    0.5439V
+Err:   -0.0013
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.566rad
+DC:    0.5439V
+Err:   -0.0013
+
+# host> status @ 195.739s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.1dBc vs DC)  phase=1.528rad
+DC:    0.5433V
+Err:   0.0026
+
+# host> status @ 196.743s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.6dBc vs DC)  phase=1.512rad
+DC:    0.5425V
+Err:   0.0045
+
+# host> status @ 197.744s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.543rad
+DC:    0.5436V
+Err:   0.0011
+
+# host> status @ 198.746s
+State: LOCKED
+Bias:  0.084 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2611V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.4dBc vs DC)  phase=1.534rad
+DC:    0.5435V
+Err:   0.0022
+
+# host> status @ 199.748s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.3dBc vs DC)  phase=1.599rad
+DC:    0.5437V
+Err:   -0.0053
+
+# host> status @ 200.753s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.8dBc vs DC)  phase=1.578rad
+DC:    0.5437V
+Err:   -0.0026
+
+# host> status @ 201.754s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.6dBc vs DC)  phase=1.560rad
+DC:    0.5450V
+Err:   -0.0005
+
+# host> status @ 202.759s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.534rad
+DC:    0.5412V
+Err:   0.0020
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.534rad
+DC:    0.5412V
+Err:   0.0020
+
+# host> status @ 203.768s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.7dBc vs DC)  phase=1.571rad
+DC:    0.5454V
+Err:   -0.0017
+
+# host> status @ 204.773s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.3dBc vs DC)  phase=1.548rad
+DC:    0.5446V
+Err:   0.0007
+
+# host> status @ 205.776s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.6dBc vs DC)  phase=1.587rad
+DC:    0.5443V
+Err:   -0.0036
+
+# host> status @ 206.781s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2611V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.3dBc vs DC)  phase=1.518rad
+DC:    0.5430V
+Err:   0.0034
+
+# host> status @ 207.784s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-74.6dBc vs DC)  phase=1.592rad
+DC:    0.5433V
+Err:   -0.0043
+
+# host> status @ 208.788s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.9dBc vs DC)  phase=1.565rad
+DC:    0.5434V
+Err:   -0.0011
+
+# host> status @ 209.793s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-75.3dBc vs DC)  phase=1.559rad
+DC:    0.5442V
+Err:   -0.0005
+
+# host> status @ 210.799s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.563rad
+DC:    0.5448V
+Err:   -0.0009
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.563rad
+DC:    0.5449V
+Err:   -0.0009
+
+# host> status @ 211.802s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.0dBc vs DC)  phase=1.600rad
+DC:    0.5464V
+Err:   -0.0056
+
+# host> status @ 212.803s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.3dBc vs DC)  phase=1.514rad
+DC:    0.5429V
+Err:   0.0038
+
+# host> status @ 213.808s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.524rad
+DC:    0.5453V
+Err:   0.0026
+
+# host> status @ 214.813s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.6dBc vs DC)  phase=1.554rad
+DC:    0.5451V
+Err:   -0.0002
+
+# host> status @ 215.815s
+State: LOCKED
+Bias:  0.063 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.639rad
+DC:    0.5453V
+Err:   -0.0091
+
+# host> status @ 216.817s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.512rad
+DC:    0.5436V
+Err:   0.0036
+
+# host> status @ 217.822s
+State: LOCKED
+Bias:  0.068 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.0dBc vs DC)  phase=1.620rad
+DC:    0.5425V
+Err:   -0.0081
+
+# host> status @ 218.826s
+State: LOCKED
+Bias:  0.077 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2612V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.1dBc vs DC)  phase=1.614rad
+DC:    0.5439V
+Err:   -0.0006
+State: LOCKED
+Bias:  0.064 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.1dBc vs DC)  phase=1.614rad
+DC:    0.5439V
+Err:   -0.0067
+
+# host> status @ 219.827s
+State: LOCKED
+Bias:  0.091 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.2dBc vs DC)  phase=1.599rad
+DC:    0.5464V
+Err:   0.0064
+
+# host> status @ 220.831s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.3dBc vs DC)  phase=1.601rad
+DC:    0.5455V
+Err:   0.0007
+
+# host> status @ 221.836s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.7dBc vs DC)  phase=1.633rad
+DC:    0.5447V
+Err:   0.0012
+
+# host> status @ 222.841s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2612V (-6.3dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.495rad
+DC:    0.5422V
+Err:   0.0051
+
+# host> status @ 223.845s
+State: LOCKED
+Bias:  0.092 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.5dBc vs DC)  phase=1.444rad
+DC:    0.5426V
+Err:   0.0090
+
+# host> status @ 224.845s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2601V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.536rad
+DC:    0.5418V
+Err:   0.0017
+
+# host> status @ 225.847s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.501rad
+DC:    0.5426V
+Err:   0.0046
+
+# host> status @ 226.847s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.560rad
+DC:    0.5451V
+Err:   -0.0006
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.560rad
+DC:    0.5451V
+Err:   -0.0006
+
+# host> status @ 227.852s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.2dBc vs DC)  phase=1.592rad
+DC:    0.5441V
+Err:   -0.0042
+
+# host> status @ 228.857s
+State: LOCKED
+Bias:  0.084 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.6dBc vs DC)  phase=1.465rad
+DC:    0.5406V
+Err:   0.0071
+
+# host> status @ 229.860s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.552rad
+DC:    0.5435V
+Err:   0.0002
+
+# host> status @ 230.866s
+State: LOCKED
+Bias:  0.085 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.0dBc vs DC)  phase=1.533rad
+DC:    0.5453V
+Err:   0.0020
+
+# host> status @ 231.871s
+State: LOCKED
+Bias:  0.065 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.5dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-73.8dBc vs DC)  phase=1.637rad
+DC:    0.5476V
+Err:   -0.0104
+
+# host> status @ 232.878s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.566rad
+DC:    0.5456V
+Err:   -0.0013
+
+# host> status @ 233.883s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.4dBc vs DC)  phase=1.559rad
+DC:    0.5442V
+Err:   -0.0007
+
+# host> status @ 234.890s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.519rad
+DC:    0.5434V
+Err:   0.0034
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.519rad
+DC:    0.5434V
+Err:   0.0034
+
+# host> status @ 235.895s
+State: LOCKED
+Bias:  0.066 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.4dBc vs DC)  phase=1.621rad
+DC:    0.5470V
+Err:   -0.0079
+
+# host> status @ 236.898s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.531rad
+DC:    0.5437V
+Err:   0.0019
+
+# host> status @ 237.903s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.516rad
+DC:    0.5423V
+Err:   0.0029
+
+# host> status @ 238.908s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.508rad
+DC:    0.5437V
+Err:   0.0039
+
+# host> status @ 239.913s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2601V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.525rad
+DC:    0.5447V
+Err:   0.0025
+
+# host> status @ 240.914s
+State: LOCKED
+Bias:  0.062 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.7dBc vs DC)  phase=1.626rad
+DC:    0.5449V
+Err:   -0.0084
+
+# host> status @ 241.919s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.0dBc vs DC)  phase=1.513rad
+DC:    0.5427V
+Err:   0.0034
+
+# host> status @ 242.921s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.567rad
+DC:    0.5451V
+Err:   -0.0013
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.5dBc vs DC)  phase=1.567rad
+DC:    0.5451V
+Err:   -0.0013
+
+# host> status @ 243.924s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2611V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.3dBc vs DC)  phase=1.542rad
+DC:    0.5445V
+Err:   0.0011
+
+# host> status @ 244.928s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.0dBc vs DC)  phase=1.579rad
+DC:    0.5440V
+Err:   -0.0026
+
+# host> status @ 245.930s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.5dBc vs DC)  phase=1.563rad
+DC:    0.5439V
+Err:   -0.0010
+
+# host> status @ 246.935s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.3dBc vs DC)  phase=1.525rad
+DC:    0.5431V
+Err:   0.0022
+
+# host> status @ 247.938s
+State: LOCKED
+Bias:  0.090 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.4dBc vs DC)  phase=1.467rad
+DC:    0.5436V
+Err:   0.0072
+
+# host> status @ 248.943s
+State: LOCKED
+Bias:  0.086 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-78.2dBc vs DC)  phase=1.471rad
+DC:    0.5428V
+Err:   0.0061
+
+# host> status @ 249.948s
+State: LOCKED
+Bias:  0.062 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.6dBc vs DC)  phase=1.619rad
+DC:    0.5441V
+Err:   -0.0069
+
+# host> status @ 250.953s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.532rad
+DC:    0.5456V
+Err:   0.0018
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.532rad
+DC:    0.5456V
+Err:   0.0018
+
+# host> status @ 251.958s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2602V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.3dBc vs DC)  phase=1.478rad
+DC:    0.5412V
+Err:   0.0055
+
+# host> status @ 252.961s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.9dBc vs DC)  phase=1.533rad
+DC:    0.5436V
+Err:   0.0013
+
+# host> status @ 253.965s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.591rad
+DC:    0.5468V
+Err:   -0.0039
+
+# host> status @ 254.966s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.570rad
+DC:    0.5454V
+Err:   -0.0017
+
+# host> status @ 255.967s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-74.3dBc vs DC)  phase=1.610rad
+DC:    0.5469V
+Err:   -0.0067
+
+# host> status @ 256.973s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.1dBc vs DC)  phase=1.546rad
+DC:    0.5461V
+Err:   0.0007
+
+# host> status @ 257.978s
+State: LOCKED
+Bias:  0.086 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.5dBc vs DC)  phase=1.483rad
+DC:    0.5441V
+Err:   0.0057
+
+# host> status @ 258.983s
+State: LOCKED
+Bias:  0.061 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.8dBc vs DC)  phase=1.642rad
+DC:    0.5462V
+Err:   -0.0101
+State: LOCKED
+Bias:  0.061 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-74.8dBc vs DC)  phase=1.642rad
+DC:    0.5462V
+Err:   -0.0101
+
+# host> status @ 259.983s
+State: LOCKED
+Bias:  0.091 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.005rad
+H2:    0.0001V (-77.6dBc vs DC)  phase=1.464rad
+DC:    0.5445V
+Err:   0.0072
+
+# host> status @ 260.984s
+State: LOCKED
+Bias:  0.091 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.9dBc vs DC)  phase=1.455rad
+DC:    0.5436V
+Err:   0.0076
+
+# host> status @ 261.992s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.0dBc vs DC)  phase=1.547rad
+DC:    0.5459V
+Err:   0.0007
+
+# host> status @ 262.993s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.573rad
+DC:    0.5453V
+Err:   -0.0020
+
+# host> status @ 263.995s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.5dBc vs DC)  phase=1.478rad
+DC:    0.5429V
+Err:   0.0052
+
+# host> status @ 264.995s
+State: LOCKED
+Bias:  0.067 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.0dBc vs DC)  phase=1.627rad
+DC:    0.5463V
+Err:   -0.0075
+
+# host> status @ 266.000s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.4dBc vs DC)  phase=1.597rad
+DC:    0.5467V
+Err:   -0.0043
+
+# host> status @ 267.005s
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.563rad
+DC:    0.5448V
+Err:   -0.0010
+State: LOCKED
+Bias:  0.074 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.563rad
+DC:    0.5448V
+Err:   -0.0010
+
+# host> status @ 268.010s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.591rad
+DC:    0.5465V
+Err:   -0.0036
+
+# host> status @ 269.011s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-77.7dBc vs DC)  phase=1.548rad
+DC:    0.5472V
+Err:   0.0002
+
+# host> status @ 270.012s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.2dBc vs DC)  phase=1.537rad
+DC:    0.5442V
+Err:   0.0009
+
+# host> status @ 271.017s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2603V (-6.5dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-75.9dBc vs DC)  phase=1.596rad
+DC:    0.5476V
+Err:   -0.0044
+
+# host> status @ 272.022s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.5dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.598rad
+DC:    0.5484V
+Err:   -0.0049
+
+# host> status @ 273.024s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.5dBc vs DC)  phase=1.554rad
+DC:    0.5451V
+Err:   -0.0001
+
+# host> status @ 274.027s
+State: LOCKED
+Bias:  0.070 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.3dBc vs DC)  phase=1.596rad
+DC:    0.5464V
+Err:   -0.0046
+
+# host> status @ 275.032s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.528rad
+DC:    0.5446V
+Err:   0.0022
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.541rad
+DC:    0.5459V
+Err:   0.0012
+
+# host> status @ 276.037s
+State: LOCKED
+Bias:  0.092 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.473rad
+DC:    0.5485V
+Err:   0.0073
+
+# host> status @ 277.039s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.1dBc vs DC)  phase=1.576rad
+DC:    0.5455V
+Err:   0.0002
+
+# host> status @ 278.044s
+State: LOCKED
+Bias:  0.091 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.5dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.616rad
+DC:    0.5484V
+Err:   0.0072
+
+# host> status @ 279.048s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.5dBc vs DC)  phase=1.640rad
+DC:    0.5453V
+Err:   -0.0010
+
+# host> status @ 280.052s
+State: LOCKED
+Bias:  0.064 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2601V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.7dBc vs DC)  phase=1.518rad
+DC:    0.5447V
+Err:   -0.0103
+
+# host> status @ 281.055s
+State: LOCKED
+Bias:  0.078 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.563rad
+DC:    0.5466V
+Err:   -0.0010
+
+# host> status @ 282.062s
+State: LOCKED
+Bias:  0.092 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.9dBc vs DC)  phase=1.422rad
+DC:    0.5446V
+Err:   0.0089
+
+# host> status @ 283.067s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.5dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.562rad
+DC:    0.5482V
+Err:   -0.0009
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.5dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.562rad
+DC:    0.5482V
+Err:   -0.0009
+
+# host> status @ 284.070s
+State: LOCKED
+Bias:  0.067 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-76.2dBc vs DC)  phase=1.611rad
+DC:    0.5460V
+Err:   -0.0058
+
+# host> status @ 285.071s
+State: LOCKED
+Bias:  0.075 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.8dBc vs DC)  phase=1.585rad
+DC:    0.5474V
+Err:   -0.0032
+
+# host> status @ 286.075s
+State: LOCKED
+Bias:  0.083 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2606V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.3dBc vs DC)  phase=1.529rad
+DC:    0.5467V
+Err:   0.0019
+
+# host> status @ 287.080s
+State: LOCKED
+Bias:  0.076 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.9dBc vs DC)  phase=1.546rad
+DC:    0.5448V
+Err:   0.0005
+
+# host> status @ 288.083s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2610V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.3dBc vs DC)  phase=1.574rad
+DC:    0.5458V
+Err:   -0.0021
+
+# host> status @ 289.089s
+State: LOCKED
+Bias:  0.065 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.4dBc vs DC)  phase=1.626rad
+DC:    0.5474V
+Err:   -0.0078
+
+# host> status @ 290.094s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2599V (-6.5dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-75.6dBc vs DC)  phase=1.606rad
+DC:    0.5480V
+Err:   -0.0055
+
+# host> status @ 291.097s
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.558rad
+DC:    0.5469V
+Err:   -0.0006
+State: LOCKED
+Bias:  0.079 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.558rad
+DC:    0.5469V
+Err:   -0.0006
+
+# host> status @ 292.102s
+State: LOCKED
+Bias:  0.082 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.8dBc vs DC)  phase=1.546rad
+DC:    0.5473V
+Err:   0.0005
+
+# host> status @ 293.106s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-77.7dBc vs DC)  phase=1.535rad
+DC:    0.5464V
+Err:   0.0012
+
+# host> status @ 294.109s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-75.7dBc vs DC)  phase=1.586rad
+DC:    0.5473V
+Err:   -0.0034
+
+# host> status @ 295.112s
+State: LOCKED
+Bias:  0.071 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2607V (-6.5dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-75.0dBc vs DC)  phase=1.617rad
+DC:    0.5486V
+Err:   -0.0071
+
+# host> status @ 296.117s
+State: LOCKED
+Bias:  0.081 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2608V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.1dBc vs DC)  phase=1.545rad
+DC:    0.5470V
+Err:   0.0009
+
+# host> status @ 297.119s
+State: LOCKED
+Bias:  0.073 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2604V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-76.7dBc vs DC)  phase=1.565rad
+DC:    0.5450V
+Err:   -0.0012
+
+# host> status @ 298.124s
+State: LOCKED
+Bias:  0.080 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2605V (-6.4dBc vs DC)  phase=1.006rad
+H2:    0.0001V (-78.3dBc vs DC)  phase=1.505rad
+DC:    0.5439V
+Err:   0.0033
+
+# host> status @ 299.127s
+State: LOCKED
+Bias:  0.088 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-78.5dBc vs DC)  phase=1.467rad
+DC:    0.5455V
+Err:   0.0061
+State: LOCKED
+Bias:  0.088 V
+Lock:  YES
+Cal:   Vpi=5.444V  null=-2.852V  peak=+2.573V  quad+=-0.139V
+H1:    0.2609V (-6.4dBc vs DC)  phase=1.007rad
+H2:    0.0001V (-78.5dBc vs DC)  phase=1.467rad
+DC:    0.5455V
+Err:   0.0061
+
+# host> stop
