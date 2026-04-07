@@ -113,6 +113,9 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
         ctrl->h2_i_blocks[i] = 0.0f;
         ctrl->h2_q_blocks[i] = 0.0f;
     }
+    ctrl->h1_i_filt = 0.0f;
+    ctrl->h1_q_filt = 0.0f;
+    ctrl->h1_filter_valid = false;
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
     ctrl->h2_filter_valid = false;
@@ -195,8 +198,19 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     float h2_i = robust_meanf(ctrl->h2_i_blocks, ctrl->control_decimation);
     float h2_q = robust_meanf(ctrl->h2_q_blocks, ctrl->control_decimation);
 
-    ctrl->last_harmonics.h1_magnitude = sqrtf(h1_i * h1_i + h1_q * h1_q);
-    ctrl->last_harmonics.h1_phase = atan2f(h1_q, h1_i);
+    /* H1 EMA — same α as H2 so both axes share identical group delay */
+    if (!ctrl->h1_filter_valid) {
+        ctrl->h1_i_filt = h1_i;
+        ctrl->h1_q_filt = h1_q;
+        ctrl->h1_filter_valid = true;
+    } else {
+        float a = BIAS_CTRL_H2_EMA_ALPHA;
+        ctrl->h1_i_filt += a * (h1_i - ctrl->h1_i_filt);
+        ctrl->h1_q_filt += a * (h1_q - ctrl->h1_q_filt);
+    }
+    ctrl->last_harmonics.h1_magnitude = sqrtf(ctrl->h1_i_filt * ctrl->h1_i_filt +
+                                              ctrl->h1_q_filt * ctrl->h1_q_filt);
+    ctrl->last_harmonics.h1_phase = atan2f(ctrl->h1_q_filt, ctrl->h1_i_filt);
 
     for (uint32_t i = 0; i < DSP_CONTROL_DECIMATION; i++) {
         ctrl->h1_i_blocks[i] = 0.0f;
@@ -293,6 +307,9 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
         ctrl->h2_i_blocks[i] = 0.0f;
         ctrl->h2_q_blocks[i] = 0.0f;
     }
+    ctrl->h1_i_filt = 0.0f;
+    ctrl->h1_q_filt = 0.0f;
+    ctrl->h1_filter_valid = false;
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
     ctrl->h2_filter_valid = false;

@@ -48,10 +48,13 @@ typedef struct {
     float h2_i_blocks[DSP_CONTROL_DECIMATION];
     float h2_q_blocks[DSP_CONTROL_DECIMATION];
 
-    /* Additional H2-only smoothing state (EMA on coherent I/Q) */
+    /* Matched EMA on H1 and H2 (same α) to preserve relative phase */
+    float h1_i_filt;
+    float h1_q_filt;
+    bool  h1_filter_valid;
     float h2_i_filt;
     float h2_q_filt;
-    bool h2_filter_valid;
+    bool  h2_filter_valid;
 
     /* Control */
     pid_state_t pid;
