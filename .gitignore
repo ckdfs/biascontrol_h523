@@ -1,6 +1,7 @@
 # Build output
 build/
 build-test/
+build-arm/
 
 # Test binaries
 test/test_goertzel
@@ -23,10 +24,13 @@ cubemx/cmake/
 # IDE files
 .vscode/
 .idea/
+.clangd
 *.swp
 *.swo
 *~
 .DS_Store
+.settings/
+__pycache__/
 
 # Compiled objects
 *.o
