@@ -278,7 +278,7 @@ typedef struct {
 | 鲁棒性与持久化 | [docs/plan/spec-04-robustness.md](docs/plan/spec-04-robustness.md) | 长期稳定性、UART 整定接口、参数持久化 |
 | 多调制器扩展 | [docs/plan/spec-05-multi-modulator.md](docs/plan/spec-05-multi-modulator.md) | DDMZM / DPMZM / DPQPSK / PM 规划 |
 | AI 维护指南 | [CLAUDE.md](CLAUDE.md) | 构建命令、调试陷阱、不变量（供 AI 使用） |
-| 实测扫描数据 | [docs/scans/](docs/scans/) | UART 原始数据、偏压扫描图、工作点照片 |
+| 实测扫描数据 | [docs/scans/](docs/scans/) | 当前保留的 UART 原始数据与控制响应图 |
 
 ### 控制响应曲线采集
 
@@ -293,9 +293,11 @@ python3 tools/capture_lock_response.py --target custom --custom-deg 45 --duratio
 
 - 发送 `stop / set bp ... / start`
 - 周期性发送 `status`
-- 保存原始串口日志、CSV 与 PNG 曲线图到 `docs/scans/raw/` 和 `docs/scans/plots/`
+- 保存结构化 `CSV` 与 `PNG` 曲线图到 `docs/scans/raw/` 和 `docs/scans/plots/`
 
-2026-04-06 的 5 分钟长稳汇总在：
+当前仓库保留的验证集包括：
 
-- [docs/scans/raw/lock_response_5min_summary_2026-04-06.csv](docs/scans/raw/lock_response_5min_summary_2026-04-06.csv)
-- [docs/scans/plots/lock_response_5min_summary_2026-04-06.png](docs/scans/plots/lock_response_5min_summary_2026-04-06.png)
+- QUAD 的 45 s 修复验证与 120 s soak
+- `quad / min / max / custom45 / custom135 / custom17` 的 5 分钟套测
+
+具体文件见 [docs/scans/README.md](docs/scans/README.md)。

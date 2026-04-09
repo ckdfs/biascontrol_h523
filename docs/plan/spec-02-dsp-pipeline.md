@@ -71,7 +71,7 @@ Note: the current implementation writes SPI1 in blocking mode from the ADC callb
 - [x] Print harmonics via USART1 for debugging
 
 ### 6. Measurement Data Management
-- [x] Store scan raw text captures under `docs/scans/raw/`
+- [x] Store scan raw CSV captures under `docs/scans/raw/`
 - [x] Store generated scan plots under `docs/scans/plots/`
 - [x] Distinguish scan artifacts by pilot amplitude in filenames
 
@@ -126,8 +126,8 @@ roughly 4 peaks are visible — more peaks give a better average and higher accu
 - [x] Tuned to 3 blocks/step: reliable settling, ~6 s fast / ~12 s full scan
 - [x] Verified on hardware (2026-04-02): full-range scan on MZM (VA channel),
       4 minima at −8.445V / −2.928V / +2.520V / +7.908V, **Vπ = 5.451V (3 intervals)**
-- [x] Scan artifacts archived: `docs/scans/raw/vpi_scan_100mvpp_full_3blk_2026-04-02.txt`
-      and `docs/scans/plots/vpi_scan_100mvpp_full_3blk_2026-04-02.png`
+- [x] Scan artifacts archived under `docs/scans/raw/` and `docs/scans/plots/`
+      Repository now only retains the current validation set; see `docs/scans/README.md`
 
 ## Acceptance Criteria
 1. Host unit tests pass with <1% magnitude error and <1 degree phase error
