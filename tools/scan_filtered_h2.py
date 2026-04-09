@@ -114,15 +114,15 @@ def fit_k(rows: list[Row]) -> float:
     return a1 / a2 if a2 > 1e-12 else 1.0
 
 
-def filter_h2(rows: list[Row]) -> tuple[list[float], list[float]]:
+def _ema_signed(rows: list[Row], mag_fn, phase_fn) -> tuple[list[float], list[float]]:
     filt_i = 0.0
     filt_q = 0.0
     valid = False
     signed: list[float] = []
     mags: list[float] = []
     for r in rows:
-        raw_i = r.h2_mag_v * math.cos(r.h2_phase_rad)
-        raw_q = r.h2_mag_v * math.sin(r.h2_phase_rad)
+        raw_i = mag_fn(r) * math.cos(phase_fn(r))
+        raw_q = mag_fn(r) * math.sin(phase_fn(r))
         if not valid:
             filt_i = raw_i
             filt_q = raw_q
@@ -133,6 +133,14 @@ def filter_h2(rows: list[Row]) -> tuple[list[float], list[float]]:
         signed.append(filt_i)
         mags.append(math.hypot(filt_i, filt_q))
     return signed, mags
+
+
+def filter_h1(rows: list[Row]) -> tuple[list[float], list[float]]:
+    return _ema_signed(rows, lambda r: r.h1_mag_v, lambda r: r.h1_phase_rad)
+
+
+def filter_h2(rows: list[Row]) -> tuple[list[float], list[float]]:
+    return _ema_signed(rows, lambda r: r.h2_mag_v, lambda r: r.h2_phase_rad)
 
 
 def save_csv(path: Path, rows: list[Row], k_fit: float, filt_signed: list[float], filt_mag: list[float]) -> None:
@@ -167,34 +175,47 @@ def save_csv(path: Path, rows: list[Row], k_fit: float, filt_signed: list[float]
             ])
 
 
-def save_plot(path: Path, rows: list[Row], k_fit: float, filt_signed: list[float]) -> None:
+def save_plot(
+    path: Path,
+    rows: list[Row],
+    k_fit: float,
+    h1_filt_signed: list[float],
+    h2_filt_signed: list[float],
+) -> None:
     plot_rows = rows[1:] if len(rows) > 1 else rows
-    plot_filt = filt_signed[1:] if len(filt_signed) > 1 else filt_signed
+    ph1f = h1_filt_signed[1:] if len(h1_filt_signed) > 1 else h1_filt_signed
+    ph2f = h2_filt_signed[1:] if len(h2_filt_signed) > 1 else h2_filt_signed
+
     bias = [r.bias_v for r in plot_rows]
-    h1s = [r.h1_signed_v for r in plot_rows]
-    raw = [k_fit * r.h2_signed_v for r in plot_rows]
-    filt = [k_fit * x for x in plot_filt]
-    raw_norm = [(k_fit * r.h2_signed_v / r.dc_v) if abs(r.dc_v) > 1e-9 else float("nan") for r in plot_rows]
-    filt_norm = [(k_fit * x / r.dc_v) if abs(r.dc_v) > 1e-9 else float("nan") for x, r in zip(plot_filt, plot_rows)]
+    h1s  = [r.h1_signed_v for r in plot_rows]
+    h1f  = [x for x in ph1f]                         # filtered H1 (same scale as raw H1)
+    raw  = [k_fit * r.h2_signed_v for r in plot_rows]
+    filt = [k_fit * x for x in ph2f]
+    raw_norm  = [(k_fit * r.h2_signed_v / r.dc_v) if abs(r.dc_v) > 1e-9 else float("nan") for r in plot_rows]
+    filt_norm = [(k_fit * x / r.dc_v) if abs(r.dc_v) > 1e-9 else float("nan") for x, r in zip(ph2f, plot_rows)]
 
     fig, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
-    axes[0].plot(bias, h1s, color="#666666", linewidth=1.2, label="H1 signed")
-    axes[0].plot(bias, raw, color="#d95f02", linewidth=1.2, alpha=0.55, label=f"raw k*H2 (k={k_fit:.1f})")
-    axes[0].plot(bias, filt, color="#1b9e77", linewidth=2.0, label="filtered k*H2")
+
+    axes[0].plot(bias, h1s,  color="#999999", linewidth=1.0, alpha=0.7, label="raw H1 signed")
+    axes[0].plot(bias, raw,  color="#d95f02", linewidth=1.2, alpha=0.55, label=f"raw k*H2 (k={k_fit:.1f})")
+    axes[0].plot(bias, h1f,  color="#333333", linewidth=2.0, linestyle="--", label="filtered H1 (EMA)")
+    axes[0].plot(bias, filt, color="#1b9e77", linewidth=2.0, label="filtered k*H2 (EMA)")
     axes[0].axhline(0.0, color="0.5", linewidth=0.8)
     axes[0].set_ylabel("Signed (V)")
-    axes[0].legend()
+    axes[0].legend(fontsize=9)
     axes[0].grid(True, alpha=0.25)
 
-    axes[1].plot(bias, raw_norm, color="#d95f02", linewidth=1.2, alpha=0.55, label="raw k*H2/DC")
+    axes[1].plot(bias, raw_norm,  color="#d95f02", linewidth=1.2, alpha=0.55, label="raw k*H2/DC")
     axes[1].plot(bias, filt_norm, color="#1b9e77", linewidth=2.0, label="filtered k*H2/DC")
     axes[1].axhline(0.0, color="0.5", linewidth=0.8)
     axes[1].set_ylabel("Normalized")
     axes[1].set_xlabel("Bias (V)")
-    axes[1].legend()
+    axes[1].legend(fontsize=9)
     axes[1].grid(True, alpha=0.25)
 
-    fig.suptitle(f"Filtered H2 Scan (EMA={EMA_ALPHA:.2f}, no DC gate, first point excluded)")
+    fig.suptitle(
+        f"Symmetric EMA Scan (α={EMA_ALPHA:.2f}, H1+H2 matched delay, first point excluded)"
+    )
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
@@ -207,7 +228,6 @@ def main() -> int:
 
     stamp = datetime.now().strftime("%Y-%m-%d")
     base = f"filtered_h2_scan_{int(round(args.pilot_mvpp))}mvpp_{args.blocks}blk_{stamp}"
-    raw_path = RAW_DIR / f"{base}.txt"
     csv_path = RAW_DIR / f"{base}.csv"
     plot_path = PLOT_DIR / f"{base}.png"
 
@@ -235,17 +255,16 @@ def main() -> int:
                     break
 
     transcript = "".join(transcript_parts)
-    raw_path.write_text(transcript, encoding="utf-8")
     rows = parse_rows(transcript)
     if not rows:
         raise SystemExit("No HSCAN rows captured")
 
     k_fit = fit_k(rows)
-    filt_signed, filt_mag = filter_h2(rows)
-    save_csv(csv_path, rows, k_fit, filt_signed, filt_mag)
-    save_plot(plot_path, rows, k_fit, filt_signed)
+    h1_filt_signed, _ = filter_h1(rows)
+    h2_filt_signed, h2_filt_mag = filter_h2(rows)
+    save_csv(csv_path, rows, k_fit, h2_filt_signed, h2_filt_mag)
+    save_plot(plot_path, rows, k_fit, h1_filt_signed, h2_filt_signed)
 
-    print(raw_path)
     print(csv_path)
     print(plot_path)
     print(f"rows={len(rows)}")

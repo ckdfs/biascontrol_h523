@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 import argparse
 import csv
 import math
@@ -34,6 +35,8 @@ class Sample:
     peak_v: float
     quad_v: float
     target_v: float
+    target_dc_v: float
+    dc_delta_v: float
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,6 +90,7 @@ def parse_status_block(text: str, target: str, custom_deg: float) -> Sample | No
     m_h1 = re.search(r"^H1:\s+([+-]?[0-9.]+)", text, re.M)
     m_h2 = re.search(r"^H2:\s+([+-]?[0-9.]+)", text, re.M)
     m_dc = re.search(r"^DC:\s+([+-]?[0-9.]+)", text, re.M)
+    m_dcref = re.search(r"^DCRef:\s+target=([+-]?[0-9.]+)V\s+delta=([+-]?[0-9.]+)V", text, re.M)
     m_cal = re.search(
         r"^Cal:\s+Vpi=([0-9.]+)V\s+null=([+-]?[0-9.]+)V\s+peak=([+-]?[0-9.]+)V\s+quad\+=([+-]?[0-9.]+)V",
         text,
@@ -100,6 +104,8 @@ def parse_status_block(text: str, target: str, custom_deg: float) -> Sample | No
     peak_v = float("nan")
     quad_v = float("nan")
     target_v = float("nan")
+    target_dc_v = float("nan")
+    dc_delta_v = float("nan")
     if m_cal is not None:
         vpi_v = float(m_cal.group(1))
         null_v = float(m_cal.group(2))
@@ -128,6 +134,8 @@ def parse_status_block(text: str, target: str, custom_deg: float) -> Sample | No
         peak_v=peak_v,
         quad_v=quad_v,
         target_v=target_v,
+        target_dc_v=float(m_dcref.group(1)) if m_dcref else target_dc_v,
+        dc_delta_v=float(m_dcref.group(2)) if m_dcref else dc_delta_v,
     )
 
 
@@ -154,6 +162,7 @@ def save_csv(path: Path, samples: list[Sample]) -> None:
             "t_s", "state", "locked", "bias_v", "err",
             "h1_v", "h2_v", "dc_v",
             "vpi_v", "null_v", "peak_v", "quad_v", "target_v",
+            "target_dc_v", "dc_delta_v",
         ])
         for s in samples:
             w.writerow([
@@ -161,6 +170,7 @@ def save_csv(path: Path, samples: list[Sample]) -> None:
                 f"{s.h1_v:.6f}", f"{s.h2_v:.6f}", f"{s.dc_v:.6f}",
                 f"{s.vpi_v:.6f}", f"{s.null_v:.6f}", f"{s.peak_v:.6f}",
                 f"{s.quad_v:.6f}", f"{s.target_v:.6f}",
+                f"{s.target_dc_v:.6f}", f"{s.dc_delta_v:.6f}",
             ])
 
 
@@ -171,6 +181,7 @@ def save_plot(path: Path, samples: list[Sample], title: str) -> None:
     h1 = [max(s.h1_v, 1e-6) if not math.isnan(s.h1_v) else float("nan") for s in samples]
     h2 = [max(s.h2_v, 1e-6) if not math.isnan(s.h2_v) else float("nan") for s in samples]
     dc = [abs(s.dc_v) if not math.isnan(s.dc_v) else float("nan") for s in samples]
+    target_dc = [abs(s.target_dc_v) if not math.isnan(s.target_dc_v) else float("nan") for s in samples]
 
     target_v = next((s.target_v for s in samples if not math.isnan(s.target_v)), float("nan"))
     null_v = next((s.null_v for s in samples if not math.isnan(s.null_v)), float("nan"))
@@ -209,6 +220,8 @@ def save_plot(path: Path, samples: list[Sample], title: str) -> None:
     ax.semilogy(t, h2, color="#e31a1c", linewidth=1.8, label="H2")
     ax.semilogy(t, [max(v, 1e-6) if not math.isnan(v) else float("nan") for v in dc],
                 color="#6a3d9a", linewidth=1.6, label="|DC|")
+    ax.semilogy(t, [max(v, 1e-6) if not math.isnan(v) else float("nan") for v in target_dc],
+                color="#ff7f00", linewidth=1.2, linestyle="--", label="|DC_ref|")
     add_locked_spans(ax, samples)
     ax.set_ylabel("Magnitude (V)")
     ax.set_xlabel("Time (s)")
@@ -230,11 +243,8 @@ def main() -> int:
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
     suffix = f"_{args.suffix}" if args.suffix else ""
     base = f"lock_response_{target_label}{suffix}_{stamp}"
-    raw_path = RAW_DIR / f"{base}.txt"
     csv_path = RAW_DIR / f"{base}.csv"
     plot_path = PLOT_DIR / f"{base}.png"
-
-    transcript: list[str] = []
     samples: list[Sample] = []
 
     with serial.Serial(args.port, args.baud, timeout=0.05, dsrdtr=False, rtscts=False) as ser:
@@ -244,23 +254,19 @@ def main() -> int:
         except Exception:
             pass
         time.sleep(0.3)
-        transcript.append(read_until_quiet(ser, quiet_s=0.10, timeout_s=0.6))
+        read_until_quiet(ser, quiet_s=0.10, timeout_s=0.6)
 
-        transcript.append(f"\n# host> stop\n")
-        transcript.append(send_cmd(ser, "stop"))
+        send_cmd(ser, "stop")
         if args.pilot_mvpp is not None:
-            transcript.append(f"\n# host> set pilot {args.pilot_mvpp:.0f}\n")
-            transcript.append(send_cmd(ser, f"set pilot {args.pilot_mvpp:.0f}", timeout_s=2.5))
+            send_cmd(ser, f"set pilot {args.pilot_mvpp:.0f}", timeout_s=2.5)
 
         if args.target == "custom":
             target_cmd = f"set bp custom {args.custom_deg:.1f}"
         else:
             target_cmd = f"set bp {args.target}"
-        transcript.append(f"\n# host> {target_cmd}\n")
-        transcript.append(send_cmd(ser, target_cmd, timeout_s=2.0))
+        send_cmd(ser, target_cmd, timeout_s=2.0)
 
-        transcript.append(f"\n# host> start\n")
-        transcript.append(send_cmd(ser, "start", quiet_s=0.15, timeout_s=1.0))
+        send_cmd(ser, "start", quiet_s=0.15, timeout_s=1.0)
 
         t0 = time.time()
         while True:
@@ -269,9 +275,6 @@ def main() -> int:
                 break
 
             text = send_cmd(ser, "status", quiet_s=0.10, timeout_s=1.2)
-            transcript.append(f"\n# host> status @ {elapsed:.3f}s\n")
-            transcript.append(text)
-
             sample = parse_status_block(text, args.target, args.custom_deg)
             if sample is not None:
                 sample.t_s = elapsed
@@ -281,10 +284,7 @@ def main() -> int:
             if remaining > 0.0:
                 time.sleep(remaining)
 
-        transcript.append(f"\n# host> stop\n")
-        transcript.append(send_cmd(ser, "stop"))
-
-    raw_path.write_text("".join(transcript), encoding="utf-8")
+        send_cmd(ser, "stop")
     if not samples:
         raise SystemExit("No status samples were captured. Check serial comms and command responses.")
 
@@ -293,7 +293,6 @@ def main() -> int:
     save_plot(plot_path, samples, title)
 
     first_locked = next((s.t_s for s in samples if s.locked), None)
-    print(f"saved raw:  {raw_path}")
     print(f"saved csv:  {csv_path}")
     print(f"saved plot: {plot_path}")
     if first_locked is None:
