@@ -41,6 +41,7 @@ static uint8_t cmd_len;
  * pending_cmd is written in ISR and read in main loop. */
 static char          pending_cmd[CMD_BUF_SIZE];
 static volatile bool pending_cmd_ready;
+static bool          rx_dma_active;
 
 /* -------------------------------------------------------------------------
  * Internal (ISR context): feed one character into the line accumulator.
@@ -64,6 +65,16 @@ static void process_byte(char c)
     }
 }
 
+static void start_rx_dma(void)
+{
+    if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rx_dma_buf, RX_DMA_BUF_SIZE) == HAL_OK) {
+        rx_dma_active = true;
+        rx_prev_pos = 0;
+    } else {
+        rx_dma_active = false;
+    }
+}
+
 /* -------------------------------------------------------------------------
  * app_uart_init — start GPDMA1 Ch4 linked-list circular reception.
  * Call once from state_init(), after MX_USART1_UART_Init() has run.
@@ -73,7 +84,8 @@ void app_uart_init(void)
     cmd_len = 0;
     rx_prev_pos = 0;
     pending_cmd_ready = false;
-    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rx_dma_buf, RX_DMA_BUF_SIZE);
+    rx_dma_active = false;
+    start_rx_dma();
 }
 
 /* -------------------------------------------------------------------------
@@ -82,6 +94,10 @@ void app_uart_init(void)
  * ------------------------------------------------------------------------- */
 void app_uart_process(void)
 {
+    if (!rx_dma_active || huart1.RxState != HAL_UART_STATE_BUSY_RX) {
+        start_rx_dma();
+    }
+
     if (!pending_cmd_ready) {
         return;
     }
@@ -123,10 +139,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
     }
 
     rx_prev_pos = Size;
+    rx_dma_active = true;
 
     /* If DMA completed a full buffer cycle, reset prev_pos for next cycle */
     if (Size == RX_DMA_BUF_SIZE) {
         rx_prev_pos = 0u;
     }
 }
-
