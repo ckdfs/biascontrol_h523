@@ -20,16 +20,29 @@ typedef struct {
     float bias_peak_v;               /**< Central peak bias anchor (V) */
     float bias_quad_pos_v;           /**< Rising-slope quadrature anchor (V) */
     float bias_quad_neg_v;           /**< Falling-slope quadrature anchor (V) */
+    float cal_dc_null_v;             /**< Calibrated DC at null with pilot applied */
+    float cal_dc_peak_v;             /**< Calibrated DC at peak with pilot applied */
+    float cal_dc_quad_pos_v;         /**< Calibrated DC at quad+ with pilot applied */
+    float cal_dc_quad_neg_v;         /**< Calibrated DC at quad- with pilot applied */
 
     /* Harmonic-axis calibration used by the phase-vector controller */
     float cal_h1_offset;            /**< H1 signed offset at zero-crossings */
-    float cal_h2_offset;            /**< H2 signed offset at quadrature points */
+    float cal_h2_offset;            /**< H2 signed background at the calibrated QUAD branch */
     float cal_h1_axis;              /**< H1 axis amplitude at quadrature (raw signed units) */
     float cal_h2_axis;              /**< H2 axis amplitude at extrema (raw signed units) */
     float cal_h1_axis_sign;         /**< Sign that maps H1 axis to +sin(phi) */
     float cal_h2_axis_sign;         /**< Sign that maps H2 axis to +cos(phi) */
     float cal_pilot_amplitude_v;    /**< Pilot peak amplitude used during axis calibration */
     bool  cal_harmonics_valid;      /**< True after successful harmonic-axis calibration */
+
+    /* Affine calibration used by the normalized phase observer */
+    bool  cal_affine_valid;         /**< True after successful affine calibration */
+    float cal_affine_o1;            /**< Affine offset for H1 signed harmonic */
+    float cal_affine_o2;            /**< Affine offset for H2 signed harmonic */
+    float cal_affine_m11;           /**< Affine matrix row 1 col 1 */
+    float cal_affine_m12;           /**< Affine matrix row 1 col 2 */
+    float cal_affine_m21;           /**< Affine matrix row 2 col 1 */
+    float cal_affine_m22;           /**< Affine matrix row 2 col 2 */
 
     /* Control parameters */
     float kp;                   /**< PID proportional gain */

@@ -48,23 +48,34 @@ typedef struct {
     float h2_i_blocks[DSP_CONTROL_DECIMATION];
     float h2_q_blocks[DSP_CONTROL_DECIMATION];
 
-    /* Matched EMA on H1 and H2 (same α) to preserve relative phase */
+    /* Matched I/Q EMA state for H1/H2 control updates */
     float h1_i_filt;
     float h1_q_filt;
-    bool  h1_filter_valid;
     float h2_i_filt;
     float h2_q_filt;
-    bool  h2_filter_valid;
+    bool iq_filter_valid;
 
     /* Control */
     pid_state_t pid;
     float bias_voltage;             /**< Current bias setpoint (volts) */
     float pilot_amplitude;          /**< Pilot tone amplitude (volts) */
+    float phase_est_rad;            /**< Unwrapped phase estimate for branch continuity */
+    float last_error;               /**< Latest accepted normalized phase error */
+    float obs_x;                    /**< Observer state: estimated sin(phi) */
+    float obs_y;                    /**< Observer state: estimated cos(phi) */
+    float target_dc_ref;            /**< Reference DC captured during calibration */
+    float outer_trim_v;             /**< Slow outer-loop trim for MIN/MAX */
+    float outer_probe_v;            /**< Temporary probe offset for slow extremum seeking */
+    float outer_probe_plus_sum;
+    float outer_probe_minus_sum;
+    uint16_t outer_probe_interval_count;
+    uint8_t outer_probe_plus_count;
+    uint8_t outer_probe_minus_count;
+    uint8_t outer_probe_stage;
 
     /* Decimation counter for control loop rate */
     uint32_t block_count;
     uint32_t control_decimation;
-    uint32_t h2_warmup_updates_remaining;
 
     /* Latest harmonic data (for monitoring/debug) */
     harmonic_data_t last_harmonics;
@@ -72,6 +83,10 @@ typedef struct {
     /* State flags */
     bool running;
     bool locked;
+    bool phase_valid;
+    bool phase_jump_rejected;
+    bool target_dc_ref_valid;
+    bool observer_valid;
 } bias_ctrl_t;
 
 /**
@@ -146,6 +161,21 @@ void bias_ctrl_set_target(bias_ctrl_t *ctrl, bias_point_t target);
  * Change the modulator type at runtime.
  */
 void bias_ctrl_set_modulator(bias_ctrl_t *ctrl, modulator_type_t type);
+
+/**
+ * Update the reference DC used by the slow MIN/MAX outer trim loop.
+ */
+void bias_ctrl_set_target_dc_ref(bias_ctrl_t *ctrl, float target_dc_ref, bool valid);
+
+/**
+ * Narrow the PI output clamp (and integral anti-windup limits) at runtime.
+ *
+ * For QUAD/CUSTOM targets the default ±10 V limits allow the integrator to
+ * wander to adjacent MZM periods where H2 ≈ 0 again, causing a lock
+ * stalemate.  Calling this function right after bias_ctrl_init() confines the
+ * bias to a single Vπ window around the calibrated target.
+ */
+void bias_ctrl_set_output_limits(bias_ctrl_t *ctrl, float out_min, float out_max);
 
 /**
  * Get the latest harmonic analysis data (for monitoring/debug).

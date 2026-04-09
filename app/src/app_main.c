@@ -21,6 +21,19 @@
 #define SCAN_INITIAL_SETTLE_MS 1000
 #define CAL_VERIFY_SETTLE_MS SCAN_INITIAL_SETTLE_MS
 
+/* Large scan buffers live in static storage to avoid blowing the MCU stack. */
+static float s_scan_bias_buf[SCAN_MAX_STEPS];
+static float s_scan_h1_mag_buf[SCAN_MAX_STEPS];
+static float s_scan_h1_signed_buf[SCAN_MAX_STEPS];
+static float s_scan_h2_signed_buf[SCAN_MAX_STEPS];
+static float s_scan_dc_buf[SCAN_MAX_STEPS];
+static float s_fit_sin_basis[SCAN_MAX_STEPS];
+static float s_fit_cos_basis[SCAN_MAX_STEPS];
+static float s_fit_phi_basis[SCAN_MAX_STEPS];
+static float s_fit_sin_phi_basis[SCAN_MAX_STEPS];
+static float s_fit_cos_phi_basis[SCAN_MAX_STEPS];
+static float s_fit_h2_smooth_buf[SCAN_MAX_STEPS];
+
 static float robust_meanf_local(const float *vals, int n)
 {
     float tmp[20];
@@ -59,6 +72,10 @@ typedef struct {
     float peak_v;
     float quad_pos_v;
     float quad_neg_v;
+    float null_dc_v;
+    float peak_dc_v;
+    float quad_pos_dc_v;
+    float quad_neg_dc_v;
     /* Harmonic-axis calibration for the phase-vector controller */
     float h1_offset;
     float h2_offset;
@@ -68,6 +85,13 @@ typedef struct {
     float h2_axis_sign;
     float pilot_cal_v;
     bool  harmonics_valid;
+    bool  affine_valid;
+    float affine_o1;
+    float affine_o2;
+    float affine_m11;
+    float affine_m12;
+    float affine_m21;
+    float affine_m22;
 } bias_cal_result_t;
 
 /* ========================================================================= */
@@ -274,6 +298,159 @@ static float interp_linear(const float *x, const float *y, int n, float target)
     return y[n - 1];
 }
 
+static bool solve_3x3(float a[3][4])
+{
+    for (int i = 0; i < 3; i++) {
+        int pivot = i;
+        float pivot_abs = fabsf(a[i][i]);
+        for (int r = i + 1; r < 3; r++) {
+            float cand = fabsf(a[r][i]);
+            if (cand > pivot_abs) {
+                pivot = r;
+                pivot_abs = cand;
+            }
+        }
+        if (pivot_abs < 1e-9f) {
+            return false;
+        }
+        if (pivot != i) {
+            for (int c = i; c < 4; c++) {
+                float tmp = a[i][c];
+                a[i][c] = a[pivot][c];
+                a[pivot][c] = tmp;
+            }
+        }
+
+        float inv = 1.0f / a[i][i];
+        for (int c = i; c < 4; c++) {
+            a[i][c] *= inv;
+        }
+
+        for (int r = 0; r < 3; r++) {
+            if (r == i) {
+                continue;
+            }
+            float f = a[r][i];
+            for (int c = i; c < 4; c++) {
+                a[r][c] -= f * a[i][c];
+            }
+        }
+    }
+    return true;
+}
+
+static bool fit_three_term_model(const float *b0, const float *b1, const float *y,
+                                 int n,
+                                 float *c0, float *c1, float *c2,
+                                 float *rmse_out)
+{
+    float s00 = 0.0f, s01 = 0.0f, s02 = 0.0f;
+    float s11 = 0.0f, s12 = 0.0f, s22 = 0.0f;
+    float t0 = 0.0f, t1 = 0.0f, t2 = 0.0f;
+    float aug[3][4];
+
+    if (n <= 0) {
+        return false;
+    }
+
+    for (int i = 0; i < n; i++) {
+        s00 += b0[i] * b0[i];
+        s01 += b0[i] * b1[i];
+        s02 += b0[i];
+        s11 += b1[i] * b1[i];
+        s12 += b1[i];
+        s22 += 1.0f;
+        t0 += b0[i] * y[i];
+        t1 += b1[i] * y[i];
+        t2 += y[i];
+    }
+
+    aug[0][0] = s00; aug[0][1] = s01; aug[0][2] = s02; aug[0][3] = t0;
+    aug[1][0] = s01; aug[1][1] = s11; aug[1][2] = s12; aug[1][3] = t1;
+    aug[2][0] = s02; aug[2][1] = s12; aug[2][2] = s22; aug[2][3] = t2;
+
+    if (!solve_3x3(aug)) {
+        return false;
+    }
+
+    *c0 = aug[0][3];
+    *c1 = aug[1][3];
+    *c2 = aug[2][3];
+
+    if (rmse_out != NULL) {
+        float mse = 0.0f;
+        for (int i = 0; i < n; i++) {
+            float y_fit = (*c0) * b0[i] + (*c1) * b1[i] + (*c2);
+            float err = y[i] - y_fit;
+            mse += err * err;
+        }
+        *rmse_out = sqrtf(mse / (float)n);
+    }
+
+    return true;
+}
+
+static void smooth_signal_gaussian(const float *x, const float *y, int n,
+                                   float sigma_v, float *out)
+{
+    const float dx_uniform = (n >= 2) ? fabsf(x[1] - x[0]) : 0.0f;
+
+    if (sigma_v <= 1e-6f) {
+        for (int i = 0; i < n; i++) {
+            out[i] = y[i];
+        }
+        return;
+    }
+
+    if (dx_uniform > 1e-6f) {
+        int radius = (int)ceilf(3.0f * sigma_v / dx_uniform);
+        if (radius < 1) {
+            radius = 1;
+        }
+        if (radius > 24) {
+            radius = 24;
+        }
+
+        float kernel[49];
+        for (int k = -radius; k <= radius; k++) {
+            float dx = (float)k * dx_uniform;
+            kernel[k + radius] = expf(-0.5f * (dx / sigma_v) * (dx / sigma_v));
+        }
+
+        for (int i = 0; i < n; i++) {
+            float weighted_sum = 0.0f;
+            float w_sum = 0.0f;
+            int j0 = i - radius;
+            int j1 = i + radius;
+            if (j0 < 0) {
+                j0 = 0;
+            }
+            if (j1 >= n) {
+                j1 = n - 1;
+            }
+            for (int j = j0; j <= j1; j++) {
+                float w = kernel[j - i + radius];
+                weighted_sum += w * y[j];
+                w_sum += w;
+            }
+            out[i] = (w_sum > 1e-12f) ? (weighted_sum / w_sum) : y[i];
+        }
+        return;
+    }
+
+    for (int i = 0; i < n; i++) {
+        float weighted_sum = 0.0f;
+        float w_sum = 0.0f;
+        for (int j = 0; j < n; j++) {
+            float dx = x[i] - x[j];
+            float w = expf(-0.5f * (dx / sigma_v) * (dx / sigma_v));
+            weighted_sum += w * y[j];
+            w_sum += w;
+        }
+        out[i] = (w_sum > 1e-12f) ? (weighted_sum / w_sum) : y[i];
+    }
+}
+
 static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan_lines)
 {
     const float pilot_peak = ctx.config->pilot_amplitude_v;
@@ -283,16 +460,14 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
     const float step = 0.1f;
     const int n_blocks_per_step = 3;
 
-    float scan_bias_buf[SCAN_MAX_STEPS];
-    float scan_h1_mag_buf[SCAN_MAX_STEPS];
-    float scan_dc_buf[SCAN_MAX_STEPS];
-
     pilot_gen_t scan_pilot;
     pilot_gen_init(&scan_pilot, (float)DSP_PILOT_FREQ_HZ,
                    (float)DSP_SAMPLE_RATE_HZ, pilot_peak);
 
-    goertzel_state_t g_h1;
+    goertzel_state_t g_h1, g_h2;
     goertzel_init(&g_h1, (float)DSP_PILOT_FREQ_HZ,
+                  (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
+    goertzel_init(&g_h2, (float)(DSP_PILOT_FREQ_HZ * 2),
                   (float)DSP_SAMPLE_RATE_HZ, DSP_GOERTZEL_BLOCK_SIZE);
 
     int n_steps = (int)((scan_stop - scan_start) / step) + 1;
@@ -319,11 +494,14 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
 
         float h1_i_sum = 0.0f;
         float h1_q_sum = 0.0f;
+        float h2_i_sum = 0.0f;
+        float h2_q_sum = 0.0f;
         float dc_sum = 0.0f;
         uint32_t dc_count = 0;
 
         for (int b = 0; b < n_blocks_per_step && !drdy_abort; b++) {
             goertzel_reset(&g_h1);
+            goertzel_reset(&g_h2);
             pilot_gen_reset(&scan_pilot);
 
             for (uint32_t s = 0; s < DSP_GOERTZEL_BLOCK_SIZE; s++) {
@@ -346,16 +524,20 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
                     float ch0 = ads131m02_code_to_voltage(smp.ch0, ADS131M02_GAIN_1);
                     float ch1 = ads131m02_code_to_voltage(smp.ch1, ADS131M02_GAIN_1);
                     goertzel_process_sample(&g_h1, ch0);
+                    goertzel_process_sample(&g_h2, ch0);
                     dc_sum += ch1;
                     dc_count++;
                 }
             }
 
             if (!drdy_abort) {
-                float h1_mag, h1_phase;
+                float h1_mag, h1_phase, h2_mag, h2_phase;
                 goertzel_get_result(&g_h1, &h1_mag, &h1_phase);
+                goertzel_get_result(&g_h2, &h2_mag, &h2_phase);
                 h1_i_sum += h1_mag * cosf(h1_phase);
                 h1_q_sum += h1_mag * sinf(h1_phase);
+                h2_i_sum += h2_mag * cosf(h2_phase);
+                h2_q_sum += h2_mag * sinf(h2_phase);
             }
         }
 
@@ -366,14 +548,21 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
         float inv_blocks = 1.0f / (float)n_blocks_per_step;
         float h1_i = h1_i_sum * inv_blocks;
         float h1_q = h1_q_sum * inv_blocks;
+        float h2_i = h2_i_sum * inv_blocks;
+        float h2_q = h2_q_sum * inv_blocks;
         float h1_mag = sqrtf(h1_i * h1_i + h1_q * h1_q);
         float h1_phase = atan2f(h1_q, h1_i);
         float h1_signed = h1_mag * cosf(h1_phase);
+        float h2_mag = sqrtf(h2_i * h2_i + h2_q * h2_q);
+        float h2_phase = atan2f(h2_q, h2_i);
+        float h2_signed = h2_mag * cosf(h2_phase);
         float dc_mean = (dc_count > 0) ? (dc_sum / (float)dc_count) : 0.0f;
 
-        scan_bias_buf[steps_done] = bias_v;
-        scan_h1_mag_buf[steps_done] = h1_mag;
-        scan_dc_buf[steps_done] = dc_mean;
+        s_scan_bias_buf[steps_done] = bias_v;
+        s_scan_h1_mag_buf[steps_done] = h1_mag;
+        s_scan_h1_signed_buf[steps_done] = h1_signed;
+        s_scan_h2_signed_buf[steps_done] = h2_signed;
+        s_scan_dc_buf[steps_done] = dc_mean;
         steps_done++;
 
         if (print_scan_lines) {
@@ -391,8 +580,8 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
 
     float h1_max = 0.0f;
     for (int i = 0; i < steps_done; i++) {
-        if (scan_h1_mag_buf[i] > h1_max) {
-            h1_max = scan_h1_mag_buf[i];
+        if (s_scan_h1_mag_buf[i] > h1_max) {
+            h1_max = s_scan_h1_mag_buf[i];
         }
     }
     if (h1_max < 1e-7f) {
@@ -405,18 +594,18 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
     int n_mins = 0;
     float min_threshold = h1_max * 0.1f;
     for (int i = 1; i < steps_done - 1 && n_mins < 16; i++) {
-        if (scan_h1_mag_buf[i] < scan_h1_mag_buf[i - 1] &&
-            scan_h1_mag_buf[i] < scan_h1_mag_buf[i + 1] &&
-            scan_h1_mag_buf[i] < min_threshold) {
-            float a = scan_h1_mag_buf[i - 1];
-            float b = scan_h1_mag_buf[i];
-            float c = scan_h1_mag_buf[i + 1];
+        if (s_scan_h1_mag_buf[i] < s_scan_h1_mag_buf[i - 1] &&
+            s_scan_h1_mag_buf[i] < s_scan_h1_mag_buf[i + 1] &&
+            s_scan_h1_mag_buf[i] < min_threshold) {
+            float a = s_scan_h1_mag_buf[i - 1];
+            float b = s_scan_h1_mag_buf[i];
+            float c = s_scan_h1_mag_buf[i + 1];
             float denom = a - 2.0f * b + c;
             float offset = (fabsf(denom) > 1e-12f) ? (0.5f * (a - c) / denom) : 0.0f;
             if (offset < -1.0f) offset = -1.0f;
             if (offset > 1.0f)  offset = 1.0f;
-            min_v[n_mins] = scan_bias_buf[i] + offset * step;
-            min_dc[n_mins] = interp_linear(scan_bias_buf, scan_dc_buf, steps_done, min_v[n_mins]);
+            min_v[n_mins] = s_scan_bias_buf[i] + offset * step;
+            min_dc[n_mins] = interp_linear(s_scan_bias_buf, s_scan_dc_buf, steps_done, min_v[n_mins]);
             n_mins++;
         }
     }
@@ -477,6 +666,76 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
         result->quad_neg_v = result->quad_pos_v - result->vpi_v;
     }
 
+    result->affine_valid = false;
+    result->affine_o1 = 0.0f;
+    result->affine_o2 = 0.0f;
+    result->affine_m11 = 0.0f;
+    result->affine_m12 = 0.0f;
+    result->affine_m21 = 0.0f;
+    result->affine_m22 = 0.0f;
+
+    if (result->vpi_v > 1e-6f) {
+        float omega = (float)M_PI / result->vpi_v;
+        float h1_csin = 0.0f;
+        float h1_ccos = 0.0f;
+        float h1_off = 0.0f;
+        float h1_rmse = 0.0f;
+
+        for (int i = 0; i < steps_done; i++) {
+            s_fit_sin_basis[i] = sinf(omega * s_scan_bias_buf[i]);
+            s_fit_cos_basis[i] = cosf(omega * s_scan_bias_buf[i]);
+        }
+
+        if (fit_three_term_model(s_fit_sin_basis, s_fit_cos_basis, s_scan_h1_signed_buf, steps_done,
+                                 &h1_csin, &h1_ccos, &h1_off, &h1_rmse)) {
+            float psi = atan2f(h1_ccos, h1_csin);
+            float h1_amp = sqrtf(h1_csin * h1_csin + h1_ccos * h1_ccos);
+            float h2_csin = 0.0f;
+            float h2_ccos = 0.0f;
+            float h2_off = 0.0f;
+            float h2_rmse = 0.0f;
+
+            for (int i = 0; i < steps_done; i++) {
+                s_fit_phi_basis[i] = omega * s_scan_bias_buf[i] + psi;
+                s_fit_sin_phi_basis[i] = sinf(s_fit_phi_basis[i]);
+                s_fit_cos_phi_basis[i] = cosf(s_fit_phi_basis[i]);
+            }
+            smooth_signal_gaussian(s_scan_bias_buf, s_scan_h2_signed_buf, steps_done,
+                                   0.25f, s_fit_h2_smooth_buf);
+
+            if (fit_three_term_model(s_fit_sin_phi_basis, s_fit_cos_phi_basis, s_scan_h1_signed_buf,
+                                     steps_done,
+                                     &result->affine_m11, &result->affine_m12,
+                                     &result->affine_o1, NULL) &&
+                fit_three_term_model(s_fit_sin_phi_basis, s_fit_cos_phi_basis, s_fit_h2_smooth_buf,
+                                     steps_done,
+                                     &h2_csin, &h2_ccos, &h2_off, &h2_rmse)) {
+                float det;
+
+                result->affine_m21 = h2_csin;
+                result->affine_m22 = h2_ccos;
+                result->affine_o2 = h2_off;
+                det = result->affine_m11 * result->affine_m22
+                    - result->affine_m12 * result->affine_m21;
+
+                if (fabsf(det) > 1e-8f && h1_amp > 1e-4f) {
+                    result->affine_valid = true;
+                    printf("[cal] affine: o=(%+.5f,%+.5f)  "
+                           "M=[[%.5f, %.5f],[%.6f, %.6f]]  "
+                           "rmse=(%.5fmV, %.5fmV)\r\n",
+                           (double)result->affine_o1,
+                           (double)result->affine_o2,
+                           (double)result->affine_m11,
+                           (double)result->affine_m12,
+                           (double)result->affine_m21,
+                           (double)result->affine_m22,
+                           (double)(h1_rmse * 1000.0f),
+                           (double)(h2_rmse * 1000.0f));
+                }
+            }
+        }
+    }
+
     {
         harmonic_data_t h_null = {0}, h_peak = {0}, h_quad_pos = {0}, h_quad_neg = {0};
         bool ok_null = measure_harmonics_at_bias(result->null_v, CAL_VERIFY_BLOCKS, &h_null);
@@ -509,6 +768,15 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
                 h_quad_neg = htmp2;
             }
         }
+
+        result->null_dc_v = ok_null ? h_null.dc_power
+                                    : interp_linear(s_scan_bias_buf, s_scan_dc_buf, steps_done, result->null_v);
+        result->peak_dc_v = ok_peak ? h_peak.dc_power
+                                    : interp_linear(s_scan_bias_buf, s_scan_dc_buf, steps_done, result->peak_v);
+        result->quad_pos_dc_v = ok_qp ? h_quad_pos.dc_power
+                                      : interp_linear(s_scan_bias_buf, s_scan_dc_buf, steps_done, result->quad_pos_v);
+        result->quad_neg_dc_v = ok_qn ? h_quad_neg.dc_power
+                                      : interp_linear(s_scan_bias_buf, s_scan_dc_buf, steps_done, result->quad_neg_v);
 
         {
             float h1s_null = ok_null ? signed_harmonic(h_null.h1_magnitude, h_null.h1_phase) : 0.0f;
@@ -555,9 +823,11 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
              *   H2s_adj = H2s - off2
              *
              * off1 is estimated from the H1 zero-crossings (null + peak).
-             * H2 zero-crossings at quad+/quad- are too weak on this board to
-             * estimate a stable offset, so H2 uses zero offset and only stores
-             * axis amplitude + sign.
+             * off2 is the measured H2 background at the calibrated QUAD lock
+             * branch (quad+ on this board), not an H2 zero-crossing estimate.
+             * This removes the deterministic 2f pilot background that would
+             * otherwise bias y_meas positive even when the modulator is already
+             * sitting at QUAD.
              *
              * The axis amplitudes are then measured from the orthogonal points:
              *   A1 from |H1s_adj| at quad+/quad-
@@ -591,7 +861,26 @@ static bool run_bias_calibration_scan(bias_cal_result_t *result, bool print_scan
                 if (off1_count > 0) {
                     result->h1_offset = off1_sum / (float)off1_count;
                 }
-                result->h2_offset = 0.0f;
+                /*
+                 * Measure H2 background directly at the calibrated QUAD lock
+                 * branch and store it as the H2 offset.  At true QUAD,
+                 * H2 ∝ cos(π/2) = 0 in theory, but DAC/ADC non-linearity
+                 * (2nd-harmonic pilot distortion) adds a deterministic
+                 * phase-coherent background.  If this background is not removed
+                 * the normalized y_meas has a consistent bias at QUAD, causing
+                 * obs_y to drift and the PI to walk away from the target.
+                 *
+                 * The controller seeds and locks against quad+, so use h2s_qp
+                 * as the primary background estimate for the active branch.
+                 * Fall back to quad- only if quad+ could not be verified.
+                 */
+                if (ok_qp) {
+                    result->h2_offset = h2s_qp;
+                } else if (ok_qn) {
+                    result->h2_offset = h2s_qn;
+                } else {
+                    result->h2_offset = 0.0f;
+                }
 
                 if (ok_qp) {
                     a1_sum += fabsf(h1s_qp - result->h1_offset);
@@ -658,12 +947,19 @@ static void commit_bias_calibration(const bias_cal_result_t *result)
     ctx.config->bias_peak_v = result->peak_v;
     ctx.config->bias_quad_pos_v = result->quad_pos_v;
     ctx.config->bias_quad_neg_v = result->quad_neg_v;
+    ctx.config->cal_dc_null_v = result->null_dc_v;
+    ctx.config->cal_dc_peak_v = result->peak_dc_v;
+    ctx.config->cal_dc_quad_pos_v = result->quad_pos_dc_v;
+    ctx.config->cal_dc_quad_neg_v = result->quad_neg_dc_v;
     mzm_set_calibration(result->valid,
                         result->vpi_v,
                         result->null_v,
                         result->peak_v,
                         result->quad_pos_v,
                         result->quad_neg_v);
+    mzm_set_dc_calibration(result->valid,
+                           result->null_dc_v,
+                           result->peak_dc_v);
 
     /* Store harmonic-axis calibration and push to the MZM strategy */
     ctx.config->cal_harmonics_valid = result->harmonics_valid;
@@ -682,6 +978,21 @@ static void commit_bias_calibration(const bias_cal_result_t *result)
                           result->h1_axis_sign,
                           result->h2_axis_sign,
                           result->pilot_cal_v);
+    ctx.config->cal_affine_valid = result->affine_valid;
+    ctx.config->cal_affine_o1 = result->affine_o1;
+    ctx.config->cal_affine_o2 = result->affine_o2;
+    ctx.config->cal_affine_m11 = result->affine_m11;
+    ctx.config->cal_affine_m12 = result->affine_m12;
+    ctx.config->cal_affine_m21 = result->affine_m21;
+    ctx.config->cal_affine_m22 = result->affine_m22;
+    mzm_set_affine_model(result->affine_valid,
+                         result->affine_o1,
+                         result->affine_o2,
+                         result->affine_m11,
+                         result->affine_m12,
+                         result->affine_m21,
+                         result->affine_m22,
+                         result->pilot_cal_v);
 
     printf("[cal] Vpi=%.3fV  null=%+.3fV  peak=%+.3fV  quad+=%+.3fV  quad-=%+.3fV\r\n",
            (double)ctx.config->vpi_v,
@@ -689,6 +1000,11 @@ static void commit_bias_calibration(const bias_cal_result_t *result)
            (double)ctx.config->bias_peak_v,
            (double)ctx.config->bias_quad_pos_v,
            (double)ctx.config->bias_quad_neg_v);
+    printf("[cal] DC refs: null=%.5f  peak=%.5f  quad+=%.5f  quad-=%.5f\r\n",
+           (double)ctx.config->cal_dc_null_v,
+           (double)ctx.config->cal_dc_peak_v,
+           (double)ctx.config->cal_dc_quad_pos_v,
+           (double)ctx.config->cal_dc_quad_neg_v);
 }
 
 static float seed_bias_from_calibration(void)
@@ -709,6 +1025,34 @@ static float seed_bias_from_calibration(void)
                ctx.config->vpi_v * (ctx.config->target_phase_rad / (float)M_PI);
     default:
         return ctx.config->bias_quad_pos_v;
+    }
+}
+
+static float target_dc_from_calibration(void)
+{
+    if (!ctx.config->bias_cal_valid) {
+        return 0.0f;
+    }
+
+    switch (ctx.config->target_point) {
+    case BIAS_POINT_MIN:
+        return ctx.config->cal_dc_null_v;
+    case BIAS_POINT_MAX:
+        return ctx.config->cal_dc_peak_v;
+    case BIAS_POINT_QUAD:
+        if (fabsf(ctx.config->cal_dc_quad_pos_v) > 1e-9f ||
+            fabsf(ctx.config->cal_dc_quad_neg_v) > 1e-9f) {
+            return 0.5f * (ctx.config->cal_dc_quad_pos_v + ctx.config->cal_dc_quad_neg_v);
+        }
+        return 0.5f * (ctx.config->cal_dc_null_v + ctx.config->cal_dc_peak_v);
+    case BIAS_POINT_CUSTOM:
+        {
+            float dc_mid = 0.5f * (ctx.config->cal_dc_peak_v + ctx.config->cal_dc_null_v);
+            float dc_amp = 0.5f * (ctx.config->cal_dc_peak_v - ctx.config->cal_dc_null_v);
+            return dc_mid + dc_amp * cosf(ctx.config->target_phase_rad);
+        }
+    default:
+        return 0.0f;
     }
 }
 
@@ -733,6 +1077,9 @@ static void state_init(void)
                         ctx.config->bias_peak_v,
                         ctx.config->bias_quad_pos_v,
                         ctx.config->bias_quad_neg_v);
+    mzm_set_dc_calibration(ctx.config->bias_cal_valid,
+                           ctx.config->cal_dc_null_v,
+                           ctx.config->cal_dc_peak_v);
 
     /* Restore harmonic-axis calibration into the MZM strategy (survives warm reset) */
     mzm_set_harmonic_axes(ctx.config->cal_harmonics_valid,
@@ -743,6 +1090,14 @@ static void state_init(void)
                           ctx.config->cal_h1_axis_sign,
                           ctx.config->cal_h2_axis_sign,
                           ctx.config->cal_pilot_amplitude_v);
+    mzm_set_affine_model(ctx.config->cal_affine_valid,
+                         ctx.config->cal_affine_o1,
+                         ctx.config->cal_affine_o2,
+                         ctx.config->cal_affine_m11,
+                         ctx.config->cal_affine_m12,
+                         ctx.config->cal_affine_m21,
+                         ctx.config->cal_affine_m22,
+                         ctx.config->cal_pilot_amplitude_v);
 
     transition_to(APP_STATE_HW_SELFTEST);
 }
@@ -803,6 +1158,38 @@ static void state_sweeping(void)
 
     /* Seed the controller near the calibrated working-point anchor. */
     ctx.bias_ctrl.bias_voltage = seed_bias_from_calibration();
+    bias_ctrl_set_target_dc_ref(&ctx.bias_ctrl,
+                                target_dc_from_calibration(),
+                                ctx.config->bias_cal_valid);
+
+    /*
+     * Narrow the PI output window to ±Vπ/2 around the calibrated target so
+     * the integrator cannot drift to an adjacent MZM period.  Applied here
+     * (after calibration) rather than in the "start" command handler because
+     * the calibration scan may run inside state_sweeping(), populating the
+     * cal values that are needed to compute the limits.
+     * MIN/MAX keep the full ±10 V range.
+     */
+    if ((ctx.bias_ctrl.target_point == BIAS_POINT_QUAD ||
+         ctx.bias_ctrl.target_point == BIAS_POINT_CUSTOM) &&
+        ctx.config->bias_cal_valid && ctx.config->vpi_v > 0.0f) {
+        float target_v = seed_bias_from_calibration();
+        /*
+         * Use 0.4×Vπ (not 0.5×Vπ) so the limits stop at φ = ±0.4π from
+         * QUAD, not at null/peak.  At null/peak the MZM optical output is
+         * zero, all harmonics vanish, the error signal drops to 0, and the
+         * integrator freezes at the boundary indefinitely.  Keeping 0.1×Vπ
+         * margin ensures at least H2 ≈ ±0.95 at the limits, which is enough
+         * to pull the bias back toward QUAD.
+         */
+        float half_vpi = ctx.config->vpi_v * 0.4f;
+        float lo = target_v - half_vpi;
+        float hi = target_v + half_vpi;
+        if (lo < -10.0f) lo = -10.0f;
+        if (hi >  10.0f) hi =  10.0f;
+        bias_ctrl_set_output_limits(&ctx.bias_ctrl, lo, hi);
+        printf("[ctrl] QUAD output window: [%.3fV, %.3fV]\r\n", (double)lo, (double)hi);
+    }
 
     /* Start closed-loop control */
     bias_ctrl_start(&ctx.bias_ctrl);
@@ -921,13 +1308,53 @@ void app_handle_command(const char *cmd)
             /* Initialize bias controller with current config */
             mzm_set_custom_phase(ctx.config->target_phase_rad);
             mzm_set_pilot_amplitude(ctx.config->pilot_amplitude_v);
+            /*
+             * Near QUAD the error signal is H2 ≈ cos(φ) → 0 and is very
+             * noisy (H2 ∝ J2(m), small for our pilot depth).  The observer
+             * (IQ-EMA + unit-vector EMA) has an effective bandwidth far below
+             * the 10 Hz control rate.  With ki=10 the PI moves the bias
+             * ~0.5 V/update, faster than the observer can track; the result
+             * is that a wrong-sign initial error drives the bias to the ±10 V
+             * clamp before the observer self-corrects.  Reducing ki to 2.5
+             * limits the per-update step to ~0.05 V, which the observer can
+             * follow, while the proportional term still provides fast damping.
+             * MIN and MAX do not need this: H1 is large and well-defined
+             * there, so the observer converges quickly at any ki.
+             */
+            /*
+             * Near QUAD (and CUSTOM) the error signal is H2 ≈ cos(φ) → 0
+             * with significant noise (H2 ∝ J2(m), tiny for our pilot depth).
+             *
+             * Two pathologies arise with the default kp=1 / ki=10 gains:
+             *   1. kp=1 immediately amplifies noise into ≥0.3 V voltage steps,
+             *      driving the bias well outside one Vpi period per update.
+             *   2. ki=10 winds the integrator up to ±10 V (int_max = out_max /
+             *      ki is now enforced in pid_init, but ki=10 still gives a
+             *      0.5 V/update increment at error=0.5, faster than the
+             *      observer can track).
+             *
+             * For QUAD/CUSTOM: lower kp to suppress noise-driven jumps, while
+             * keeping ki moderate so the integrator can still pull into the
+             * local branch in a reasonable time.
+             * MIN/MAX use H1 which is large and reliable — no change needed.
+             */
+            float kp_eff = ctx.config->kp;
+            float ki_eff = ctx.config->ki;
+            if (ctx.config->target_point == BIAS_POINT_QUAD ||
+                ctx.config->target_point == BIAS_POINT_CUSTOM) {
+                kp_eff = 0.1f;
+                ki_eff = 2.5f;
+            }
             bias_ctrl_init(&ctx.bias_ctrl,
                            ctx.config->modulator_type,
                            ctx.config->target_point,
                            ctx.config->initial_bias_v,
                            ctx.config->pilot_amplitude_v,
-                           ctx.config->kp,
-                           ctx.config->ki);
+                           kp_eff,
+                           ki_eff);
+            bias_ctrl_set_target_dc_ref(&ctx.bias_ctrl,
+                                        target_dc_from_calibration(),
+                                        ctx.config->bias_cal_valid);
             transition_to(APP_STATE_SWEEPING);
         }
     } else if (strcmp(cmd, "stop") == 0) {
@@ -936,12 +1363,7 @@ void app_handle_command(const char *cmd)
         transition_to(APP_STATE_IDLE);
     } else if (strcmp(cmd, "status") == 0) {
         const harmonic_data_t *h = bias_ctrl_get_harmonics(&ctx.bias_ctrl);
-        float ctrl_error = 0.0f;
-        if (ctx.bias_ctrl.strategy && ctx.bias_ctrl.strategy->compute_error) {
-            ctrl_error = ctx.bias_ctrl.strategy->compute_error(h,
-                                                               ctx.bias_ctrl.target_point,
-                                                               &ctx.bias_ctrl);
-        }
+        float ctrl_error = ctx.bias_ctrl.last_error;
         printf("State: %s\r\n", app_state_name(ctx.state));
         printf("Bias:  %.3f V\r\n", (double)bias_ctrl_get_bias_voltage(&ctx.bias_ctrl));
         printf("Lock:  %s\r\n", bias_ctrl_is_locked(&ctx.bias_ctrl) ? "YES" : "NO");
@@ -951,11 +1373,17 @@ void app_handle_command(const char *cmd)
                    (double)ctx.config->bias_null_v,
                    (double)ctx.config->bias_peak_v,
                    (double)ctx.config->bias_quad_pos_v);
+            printf("CalDC: null=%.5fV  peak=%.5fV  quad+=%.5fV  quad-=%.5fV\r\n",
+                   (double)ctx.config->cal_dc_null_v,
+                   (double)ctx.config->cal_dc_peak_v,
+                   (double)ctx.config->cal_dc_quad_pos_v,
+                   (double)ctx.config->cal_dc_quad_neg_v);
         } else {
             printf("Cal:   INVALID\r\n");
         }
         if (ctx.state == APP_STATE_LOCKING || ctx.state == APP_STATE_LOCKED) {
             float dc = h->dc_power > 1e-6f ? h->dc_power : 1e-6f;
+            float target_dc = target_dc_from_calibration();
             printf("H1:    %.4fV (%.1fdBc vs DC)  phase=%.3frad\r\n",
                    (double)h->h1_magnitude,
                    (double)(20.0f * log10f(h->h1_magnitude / dc + 1e-9f)),
@@ -965,6 +1393,11 @@ void app_handle_command(const char *cmd)
                    (double)(20.0f * log10f(h->h2_magnitude / dc + 1e-9f)),
                    (double)h->h2_phase);
             printf("DC:    %.4fV\r\n", (double)h->dc_power);
+            if (ctx.config->bias_cal_valid) {
+                printf("DCRef: target=%.5fV  delta=%+.5fV\r\n",
+                       (double)target_dc,
+                       (double)(h->dc_power - target_dc));
+            }
             printf("Err:   %.4f\r\n", (double)ctrl_error);
         }
     } else if (strncmp(cmd, "set bp ", 7) == 0) {
@@ -1003,6 +1436,9 @@ void app_handle_command(const char *cmd)
             printf("[bp] %s\r\n", bias_point_name(ctx.config->target_point));
         }
         bias_ctrl_set_target(&ctx.bias_ctrl, ctx.config->target_point);
+        bias_ctrl_set_target_dc_ref(&ctx.bias_ctrl,
+                                    target_dc_from_calibration(),
+                                    ctx.config->bias_cal_valid);
     } else if (strcmp(cmd, "dac mid") == 0) {
         /* Set all 8 channels to 0 V output (mid-scale code 32768) */
         int ret = dac8568_write_channel(DAC8568_CH_ALL, 32768);

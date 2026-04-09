@@ -5,12 +5,124 @@
 #include <math.h>
 #include <float.h>
 
-/*
- * H2 is the weakest observable in the loop.  Smooth its coherent I/Q estimate
- * more aggressively than H1.
- */
-#define BIAS_CTRL_H2_EMA_ALPHA      0.05f
-#define BIAS_CTRL_H2_WARMUP_UPDATES  3u
+#define BIAS_CTRL_IQ_EMA_ALPHA 0.20f
+#define BIAS_CTRL_OUTER_DC_TRIGGER_V         0.002f
+#define BIAS_CTRL_OUTER_PROBE_STEP_V         0.005f
+#define BIAS_CTRL_OUTER_TRIM_STEP_V          0.0005f
+#define BIAS_CTRL_OUTER_TRIM_MAX_V           0.200f
+#define BIAS_CTRL_OUTER_PROBE_INTERVAL_UPDATES 50u
+#define BIAS_CTRL_OUTER_PROBE_AVG_UPDATES    2u
+#define BIAS_CTRL_OUTER_PROBE_MIN_DIFF_V     0.0002f
+
+#define OUTER_PROBE_IDLE   0u
+#define OUTER_PROBE_PLUS   1u
+#define OUTER_PROBE_MINUS  2u
+
+static void apply_iq_ema(float *i_filt, float *q_filt, float i_raw, float q_raw)
+{
+    *i_filt += BIAS_CTRL_IQ_EMA_ALPHA * (i_raw - *i_filt);
+    *q_filt += BIAS_CTRL_IQ_EMA_ALPHA * (q_raw - *q_filt);
+}
+
+static float clampf(float val, float lo, float hi)
+{
+    if (val < lo) return lo;
+    if (val > hi) return hi;
+    return val;
+}
+
+static bool target_uses_outer_trim(const bias_ctrl_t *ctrl)
+{
+    return ctrl->target_dc_ref_valid &&
+           (ctrl->target_point == BIAS_POINT_MIN || ctrl->target_point == BIAS_POINT_MAX);
+}
+
+static void outer_trim_reset(bias_ctrl_t *ctrl, bool clear_trim)
+{
+    ctrl->outer_probe_v = 0.0f;
+    ctrl->outer_probe_plus_sum = 0.0f;
+    ctrl->outer_probe_minus_sum = 0.0f;
+    ctrl->outer_probe_interval_count = 0u;
+    ctrl->outer_probe_plus_count = 0u;
+    ctrl->outer_probe_minus_count = 0u;
+    ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
+    if (clear_trim) {
+        ctrl->outer_trim_v = 0.0f;
+    }
+}
+
+static bool outer_trim_update(bias_ctrl_t *ctrl)
+{
+    float dc_now = ctrl->last_harmonics.dc_power;
+
+    if (!target_uses_outer_trim(ctrl)) {
+        outer_trim_reset(ctrl, true);
+        return false;
+    }
+
+    if (!ctrl->locked || ctrl->phase_jump_rejected) {
+        outer_trim_reset(ctrl, false);
+        return false;
+    }
+
+    if (ctrl->outer_probe_stage == OUTER_PROBE_PLUS) {
+        ctrl->outer_probe_plus_sum += dc_now;
+        ctrl->outer_probe_plus_count++;
+        if (ctrl->outer_probe_plus_count >= BIAS_CTRL_OUTER_PROBE_AVG_UPDATES) {
+            ctrl->outer_probe_stage = OUTER_PROBE_MINUS;
+            ctrl->outer_probe_v = -BIAS_CTRL_OUTER_PROBE_STEP_V;
+            ctrl->outer_probe_minus_sum = 0.0f;
+            ctrl->outer_probe_minus_count = 0u;
+        }
+        return true;
+    }
+
+    if (ctrl->outer_probe_stage == OUTER_PROBE_MINUS) {
+        ctrl->outer_probe_minus_sum += dc_now;
+        ctrl->outer_probe_minus_count++;
+        if (ctrl->outer_probe_minus_count >= BIAS_CTRL_OUTER_PROBE_AVG_UPDATES) {
+            float dc_plus = ctrl->outer_probe_plus_sum / (float)ctrl->outer_probe_plus_count;
+            float dc_minus = ctrl->outer_probe_minus_sum / (float)ctrl->outer_probe_minus_count;
+            float diff = dc_plus - dc_minus;
+
+            if (fabsf(diff) >= BIAS_CTRL_OUTER_PROBE_MIN_DIFF_V) {
+                float step_sign = 0.0f;
+                if (ctrl->target_point == BIAS_POINT_MIN) {
+                    step_sign = (dc_plus < dc_minus) ? 1.0f : -1.0f;
+                } else if (ctrl->target_point == BIAS_POINT_MAX) {
+                    step_sign = (dc_plus > dc_minus) ? 1.0f : -1.0f;
+                }
+                ctrl->outer_trim_v = clampf(ctrl->outer_trim_v + step_sign * BIAS_CTRL_OUTER_TRIM_STEP_V,
+                                            -BIAS_CTRL_OUTER_TRIM_MAX_V,
+                                            BIAS_CTRL_OUTER_TRIM_MAX_V);
+            }
+
+            ctrl->outer_probe_v = 0.0f;
+            ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
+            ctrl->outer_probe_interval_count = 0u;
+        }
+        return true;
+    }
+
+    if (fabsf(dc_now - ctrl->target_dc_ref) <= BIAS_CTRL_OUTER_DC_TRIGGER_V) {
+        ctrl->outer_probe_interval_count = 0u;
+        return false;
+    }
+
+    ctrl->outer_probe_interval_count++;
+    if (ctrl->outer_probe_interval_count >= BIAS_CTRL_OUTER_PROBE_INTERVAL_UPDATES) {
+        ctrl->outer_probe_stage = OUTER_PROBE_PLUS;
+        ctrl->outer_probe_v = BIAS_CTRL_OUTER_PROBE_STEP_V;
+        ctrl->outer_probe_plus_sum = 0.0f;
+        ctrl->outer_probe_minus_sum = 0.0f;
+        ctrl->outer_probe_plus_count = 0u;
+        ctrl->outer_probe_minus_count = 0u;
+        ctrl->outer_probe_interval_count = 0u;
+    }
+
+    return false;
+}
+
 
 static float robust_meanf(const float *vals, uint32_t n)
 {
@@ -115,11 +227,9 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     }
     ctrl->h1_i_filt = 0.0f;
     ctrl->h1_q_filt = 0.0f;
-    ctrl->h1_filter_valid = false;
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
-    ctrl->h2_filter_valid = false;
-
+    ctrl->iq_filter_valid = false;
     /* PID controller */
     float control_dt = (float)(DSP_GOERTZEL_BLOCK_SIZE * DSP_CONTROL_DECIMATION)
                        / (float)DSP_SAMPLE_RATE_HZ;
@@ -128,11 +238,23 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     /* Bias state */
     ctrl->bias_voltage = initial_bias_v;
     ctrl->pilot_amplitude = pilot_amplitude_v;
+    ctrl->phase_est_rad = 0.0f;
+    ctrl->last_error = 0.0f;
+    ctrl->obs_x = 0.0f;
+    ctrl->obs_y = 1.0f;
+    ctrl->target_dc_ref = 0.0f;
+    ctrl->outer_trim_v = 0.0f;
+    ctrl->outer_probe_v = 0.0f;
+    ctrl->outer_probe_plus_sum = 0.0f;
+    ctrl->outer_probe_minus_sum = 0.0f;
+    ctrl->outer_probe_interval_count = 0u;
+    ctrl->outer_probe_plus_count = 0u;
+    ctrl->outer_probe_minus_count = 0u;
+    ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
 
     /* Decimation */
     ctrl->block_count = 0;
     ctrl->control_decimation = DSP_CONTROL_DECIMATION;
-    ctrl->h2_warmup_updates_remaining = BIAS_CTRL_H2_WARMUP_UPDATES;
 
     /* Clear harmonics */
     ctrl->last_harmonics.h1_magnitude = 0.0f;
@@ -143,6 +265,10 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
 
     ctrl->running = false;
     ctrl->locked = false;
+    ctrl->phase_valid = false;
+    ctrl->phase_jump_rejected = false;
+    ctrl->target_dc_ref_valid = false;
+    ctrl->observer_valid = false;
 
     /* Call modulator-specific init if provided */
     if (ctrl->strategy && ctrl->strategy->init) {
@@ -198,19 +324,20 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     float h2_i = robust_meanf(ctrl->h2_i_blocks, ctrl->control_decimation);
     float h2_q = robust_meanf(ctrl->h2_q_blocks, ctrl->control_decimation);
 
-    /* H1 EMA — same α as H2 so both axes share identical group delay */
-    if (!ctrl->h1_filter_valid) {
+    if (!ctrl->iq_filter_valid) {
         ctrl->h1_i_filt = h1_i;
         ctrl->h1_q_filt = h1_q;
-        ctrl->h1_filter_valid = true;
+        ctrl->h2_i_filt = h2_i;
+        ctrl->h2_q_filt = h2_q;
+        ctrl->iq_filter_valid = true;
     } else {
-        float a = BIAS_CTRL_H2_EMA_ALPHA;
-        ctrl->h1_i_filt += a * (h1_i - ctrl->h1_i_filt);
-        ctrl->h1_q_filt += a * (h1_q - ctrl->h1_q_filt);
+        apply_iq_ema(&ctrl->h1_i_filt, &ctrl->h1_q_filt, h1_i, h1_q);
+        apply_iq_ema(&ctrl->h2_i_filt, &ctrl->h2_q_filt, h2_i, h2_q);
     }
+
     ctrl->last_harmonics.h1_magnitude = sqrtf(ctrl->h1_i_filt * ctrl->h1_i_filt +
                                               ctrl->h1_q_filt * ctrl->h1_q_filt);
-    ctrl->last_harmonics.h1_phase = atan2f(ctrl->h1_q_filt, ctrl->h1_i_filt);
+    ctrl->last_harmonics.h1_phase     = atan2f(ctrl->h1_q_filt, ctrl->h1_i_filt);
 
     for (uint32_t i = 0; i < DSP_CONTROL_DECIMATION; i++) {
         ctrl->h1_i_blocks[i] = 0.0f;
@@ -226,29 +353,11 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
     ctrl->dc_sum = 0.0f;
     ctrl->dc_count = 0;
 
-    /* H2-only EMA in coherent I/Q space, without any DC gating. */
-    if (!ctrl->h2_filter_valid) {
-        ctrl->h2_i_filt = h2_i;
-        ctrl->h2_q_filt = h2_q;
-        ctrl->h2_filter_valid = true;
-    } else {
-        float a = BIAS_CTRL_H2_EMA_ALPHA;
-        ctrl->h2_i_filt += a * (h2_i - ctrl->h2_i_filt);
-        ctrl->h2_q_filt += a * (h2_q - ctrl->h2_q_filt);
-    }
-
     ctrl->last_harmonics.h2_magnitude = sqrtf(ctrl->h2_i_filt * ctrl->h2_i_filt +
                                               ctrl->h2_q_filt * ctrl->h2_q_filt);
-    ctrl->last_harmonics.h2_phase = atan2f(ctrl->h2_q_filt, ctrl->h2_i_filt);
+    ctrl->last_harmonics.h2_phase     = atan2f(ctrl->h2_q_filt, ctrl->h2_i_filt);
 
-    /*
-     * Align online control with the scan path: the first H2 update after start
-     * is treated as a warm-up sample. We keep the filtered harmonic estimate
-     * for debug/inspection, but do not let it drive the PID or lock decision.
-     */
-    if (ctrl->h2_warmup_updates_remaining > 0u) {
-        ctrl->h2_warmup_updates_remaining--;
-        ctrl->locked = false;
+    if (outer_trim_update(ctrl)) {
         return false;
     }
 
@@ -257,9 +366,17 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
         return false;
     }
 
+    ctrl->phase_jump_rejected = false;
     float error = ctrl->strategy->compute_error(&ctrl->last_harmonics,
-                                                 ctrl->target_point,
-                                                 ctrl);
+                                                ctrl->target_point,
+                                                ctrl);
+
+    if (ctrl->phase_jump_rejected) {
+        ctrl->locked = false;
+        return false;
+    }
+
+    ctrl->last_error = error;
 
     /* PID update */
     ctrl->bias_voltage = pid_update(&ctrl->pid, error);
@@ -277,7 +394,8 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
 float bias_ctrl_get_dac_output(bias_ctrl_t *ctrl)
 {
     float pilot_sample = pilot_gen_next(&ctrl->pilot);
-    return ctrl->bias_voltage + pilot_sample;
+    return clampf(ctrl->bias_voltage + ctrl->outer_trim_v + ctrl->outer_probe_v + pilot_sample,
+                  -10.0f, 10.0f);
 }
 
 void bias_ctrl_start(bias_ctrl_t *ctrl)
@@ -307,16 +425,22 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
         ctrl->h2_i_blocks[i] = 0.0f;
         ctrl->h2_q_blocks[i] = 0.0f;
     }
+    ctrl->block_count = 0;
     ctrl->h1_i_filt = 0.0f;
     ctrl->h1_q_filt = 0.0f;
-    ctrl->h1_filter_valid = false;
     ctrl->h2_i_filt = 0.0f;
     ctrl->h2_q_filt = 0.0f;
-    ctrl->h2_filter_valid = false;
-    ctrl->h2_warmup_updates_remaining = BIAS_CTRL_H2_WARMUP_UPDATES;
-    ctrl->block_count = 0;
+    ctrl->iq_filter_valid = false;
+    ctrl->phase_est_rad = 0.0f;
+    ctrl->last_error = 0.0f;
+    ctrl->obs_x = 0.0f;
+    ctrl->obs_y = 1.0f;
+    ctrl->phase_valid = false;
+    ctrl->phase_jump_rejected = false;
+    outer_trim_reset(ctrl, true);
     ctrl->running = true;
     ctrl->locked = false;
+    ctrl->observer_valid = false;
 }
 
 void bias_ctrl_stop(bias_ctrl_t *ctrl)
@@ -429,7 +553,7 @@ float bias_ctrl_coarse_sweep(bias_ctrl_t *ctrl)
         hdata.dc_power = dc_accum_get_mean(&dc_acc);
 
         /* Evaluate error using the same function as closed-loop control */
-        float err = ctrl->strategy->compute_error(&hdata, ctrl->target_point, ctrl);
+        float err = ctrl->strategy->compute_error(&hdata, ctrl->target_point, NULL);
         float abs_err = (err < 0.0f) ? -err : err;
 
         if (abs_err < best_err) {
@@ -446,16 +570,54 @@ void bias_ctrl_set_target(bias_ctrl_t *ctrl, bias_point_t target)
 {
     ctrl->target_point = target;
     pid_reset(&ctrl->pid);
+    ctrl->phase_est_rad = 0.0f;
+    ctrl->last_error = 0.0f;
     ctrl->locked = false;
+    ctrl->phase_valid = false;
+    ctrl->phase_jump_rejected = false;
+    ctrl->observer_valid = false;
+    outer_trim_reset(ctrl, true);
 }
 
 void bias_ctrl_set_modulator(bias_ctrl_t *ctrl, modulator_type_t type)
 {
     ctrl->strategy = modulator_get_strategy(type);
     pid_reset(&ctrl->pid);
+    ctrl->phase_est_rad = 0.0f;
+    ctrl->last_error = 0.0f;
     ctrl->locked = false;
+    ctrl->phase_valid = false;
+    ctrl->phase_jump_rejected = false;
+    ctrl->observer_valid = false;
+    outer_trim_reset(ctrl, true);
     if (ctrl->strategy && ctrl->strategy->init) {
         ctrl->strategy->init(ctrl->strategy->ctx);
+    }
+}
+
+void bias_ctrl_set_target_dc_ref(bias_ctrl_t *ctrl, float target_dc_ref, bool valid)
+{
+    ctrl->target_dc_ref = target_dc_ref;
+    ctrl->target_dc_ref_valid = valid;
+    ctrl->observer_valid = false;
+    outer_trim_reset(ctrl, true);
+}
+
+void bias_ctrl_set_output_limits(bias_ctrl_t *ctrl, float out_min, float out_max)
+{
+    ctrl->pid.out_min = out_min;
+    ctrl->pid.out_max = out_max;
+    if (ctrl->pid.ki > 1e-6f) {
+        ctrl->pid.int_min = out_min / ctrl->pid.ki;
+        ctrl->pid.int_max = out_max / ctrl->pid.ki;
+    } else {
+        ctrl->pid.int_min = out_min;
+        ctrl->pid.int_max = out_max;
+    }
+    if (ctrl->pid.integral < ctrl->pid.int_min) {
+        ctrl->pid.integral = ctrl->pid.int_min;
+    } else if (ctrl->pid.integral > ctrl->pid.int_max) {
+        ctrl->pid.integral = ctrl->pid.int_max;
     }
 }
 

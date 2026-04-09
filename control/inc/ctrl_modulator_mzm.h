@@ -18,9 +18,9 @@
  *   y = sign2 * (H2_signed - off2) / A2(m)
  *
  * where A1/A2 are the calibrated axis amplitudes and are updated online from
- * the known pilot amplitude using J1/J2 scaling.  The control error is the
- * angle between the current state vector (x, y) and the target vector
- * (sin φ_target, cos φ_target).
+ * the known pilot amplitude using J1/J2 scaling.  Runtime control uses the
+ * filtered H1/H2 coherent vectors to recover a principal phase, then unwraps
+ * that phase against the previous control update to keep branch continuity.
  *
  * Standard working points in the calibrated φ coordinate:
  *   MIN:    φ_target = 0
@@ -58,6 +58,14 @@ void mzm_set_calibration(bool valid,
                          float quad_neg_v);
 
 /**
+ * Set the calibrated DC extrema used to recover cos(phi) from the optical DC
+ * transfer curve when H2 is too weak near QUAD.
+ */
+void mzm_set_dc_calibration(bool valid,
+                            float null_dc_v,
+                            float peak_dc_v);
+
+/**
  * Set the calibrated harmonic-axis model used by the phase-vector controller.
  *
  * The controller removes small signed-harmonic offsets, scales the H1/H2 axes
@@ -81,5 +89,23 @@ void mzm_set_harmonic_axes(bool valid,
                            float h1_axis_sign,
                            float h2_axis_sign,
                            float pilot_amp_v);
+
+/**
+ * Set the affine model used by the normalized phase observer.
+ *
+ * The affine model maps the raw signed-harmonic plane back to the ideal
+ * [sin(phi), cos(phi)] coordinates:
+ *   [H1s, H2s]^T ≈ o + M * [sin(phi), cos(phi)]^T
+ *
+ * Runtime control applies the inverse transform before phase recovery.
+ */
+void mzm_set_affine_model(bool valid,
+                          float o1,
+                          float o2,
+                          float m11,
+                          float m12,
+                          float m21,
+                          float m22,
+                          float pilot_amp_v);
 
 #endif /* CTRL_MODULATOR_MZM_H */

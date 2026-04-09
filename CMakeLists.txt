@@ -129,4 +129,12 @@ if(BUILD_TESTS)
     target_include_directories(test_pid PRIVATE control/inc)
     target_link_libraries(test_pid m)
     add_test(NAME pid COMMAND test_pid)
+
+    add_executable(test_mzm_phase
+        test/test_mzm_phase.c
+        control/src/ctrl_modulator_mzm.c
+    )
+    target_include_directories(test_mzm_phase PRIVATE control/inc dsp/inc)
+    target_link_libraries(test_mzm_phase m)
+    add_test(NAME mzm_phase COMMAND test_mzm_phase)
 endif()
