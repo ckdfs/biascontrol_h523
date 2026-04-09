@@ -1,6 +1,0 @@
-name,file,duration_s,samples,first_lock_s,lock_ratio,lock_ratio_after_first_lock,tail_bias_mean_v,tail_bias_std_v,tail_err_abs_mean,tail_err_abs_max,tail_bias_minus_target_mean_v
-custom_135deg,lock_response_custom_135deg_5min_2026-04-06_210414.csv,299.181,299,8.027,0.9732,1.0000,0.845583,0.003953,0.001738,0.007900,-0.385417
-custom_45deg,lock_response_custom_45deg_5min_2026-04-06_205911.csv,299.120,299,22.093,0.9264,1.0000,-1.612475,0.008338,0.004788,0.010300,-0.121475
-max,lock_response_max_5min_2026-04-06_204907.csv,299.156,299,1.004,0.9967,1.0000,2.298758,0.010774,0.000081,0.000200,-0.274242
-min,lock_response_min_5min_2026-04-06_205409.csv,299.660,300,2.009,0.9933,1.0000,-2.715769,0.015603,0.000100,0.000100,0.136231
-quad,lock_response_quad_5min_2026-04-06_204405.csv,299.127,299,146.553,0.5117,1.0000,0.078425,0.007268,0.003603,0.016300,0.217425
