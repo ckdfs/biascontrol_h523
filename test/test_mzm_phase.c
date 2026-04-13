@@ -44,8 +44,7 @@ static void check_close(const char *name, float actual, float expected, float to
 
 static void setup_calibration(void)
 {
-    mzm_set_calibration(true, 10.0f, 0.0f, 10.0f, 5.0f, -5.0f);
-    mzm_set_dc_calibration(true, 0.0f, 1.0f);
+    mzm_set_calibration(true, 10.0f, 0.0f, 10.0f, 5.0f, -5.0f, 0.0f, 0.0f);
     mzm_set_harmonic_axes(true, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.05f);
     mzm_set_affine_model(true, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.05f);
     mzm_set_custom_phase((float)M_PI / 2.0f);
@@ -59,8 +58,13 @@ static harmonic_data_t make_harmonics(float phi_rad)
 
     h.h1_magnitude = fabsf(h1s);
     h.h1_phase = (h1s >= 0.0f) ? 0.0f : (float)M_PI;
+    /*
+     * Observer now reads H2 as h2_mag * sinf(h2_phase) (Q-component).
+     * Set h2_phase = +π/2 for positive h2s, -π/2 for negative, so that
+     * sinf(h2_phase) × h2_magnitude == h2s.
+     */
     h.h2_magnitude = fabsf(h2s);
-    h.h2_phase = (h2s >= 0.0f) ? 0.0f : (float)M_PI;
+    h.h2_phase = (h2s >= 0.0f) ? (float)M_PI / 2.0f : -(float)M_PI / 2.0f;
     h.dc_power = 0.5f - 0.5f * h2s;
     return h;
 }
@@ -180,47 +184,38 @@ static void test_quad_h2_background_offset(void)
     const modulator_strategy_t *strategy = mzm_get_strategy();
     float err;
 
-    mzm_set_dc_calibration(false, 0.0f, 0.0f);
     mzm_set_affine_model(false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.05f);
     mzm_set_harmonic_axes(true, 0.0f, 0.0030f, 1.0f, 1.0f, 1.0f, 1.0f, 0.05f);
 
     h.h1_magnitude = 1.0f;
     h.h1_phase = 0.0f;
+    /* h2_phase = π/2 → sinf(π/2) = 1 → h2_signed = 0.003 (matches h2_offset) */
     h.h2_magnitude = 0.0030f;
-    h.h2_phase = 0.0f;
+    h.h2_phase = (float)M_PI / 2.0f;
     h.dc_power = 1.0f;
 
     err = strategy->compute_error(&h, BIAS_POINT_QUAD, NULL);
     check_close("quad background-cancelled error", err, 0.0f, 0.002f);
 
-    mzm_set_dc_calibration(true, 0.0f, 1.0f);
     mzm_set_affine_model(true, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.05f);
     mzm_set_harmonic_axes(true, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.05f);
 }
 
-static void test_quad_uses_dc_cosine_when_h2_is_tiny(void)
+static void test_quad_error_ignores_dc_level(void)
 {
-    printf("\n[Test] QUAD y uses calibrated DC slope when H2 is too weak\n");
+    printf("\n[Test] QUAD error is independent of dc_power\n");
 
-    bias_ctrl_t ctrl;
-    harmonic_data_t h = {0};
     const modulator_strategy_t *strategy = mzm_get_strategy();
-    float err_high_dc;
-    float err_low_dc;
+    harmonic_data_t h = make_harmonics(0.40f * (float)M_PI);
+    float err_lo;
+    float err_hi;
 
-    memset(&ctrl, 0, sizeof(ctrl));
-    h.h1_magnitude = 1.0f;
-    h.h1_phase = 0.0f;
-    h.h2_magnitude = 0.0f;
-    h.h2_phase = 0.0f;
+    h.dc_power = 0.20f;
+    err_lo = strategy->compute_error(&h, BIAS_POINT_QUAD, NULL);
+    h.dc_power = 0.90f;
+    err_hi = strategy->compute_error(&h, BIAS_POINT_QUAD, NULL);
 
-    h.dc_power = 0.60f;
-    err_high_dc = strategy->compute_error(&h, BIAS_POINT_QUAD, NULL);
-    check_true("dc above quad midpoint gives negative y/error", err_high_dc < -0.05f);
-
-    h.dc_power = 0.40f;
-    err_low_dc = strategy->compute_error(&h, BIAS_POINT_QUAD, NULL);
-    check_true("dc below quad midpoint gives positive y/error", err_low_dc > 0.05f);
+    check_close("quad error unchanged across dc levels", err_lo, err_hi, 0.001f);
 }
 
 int main(void)
@@ -233,7 +228,7 @@ int main(void)
     test_error_signs();
     test_matched_ema_phase_lag();
     test_quad_h2_background_offset();
-    test_quad_uses_dc_cosine_when_h2_is_tiny();
+    test_quad_error_ignores_dc_level();
 
     printf("\n=== Results: %d passed, %d failed ===\n",
            tests_passed, tests_failed);

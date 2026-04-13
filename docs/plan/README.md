@@ -11,9 +11,10 @@
 | [spec-00-hardware](spec-00-hardware.md) | **Reference** | Hardware pin mapping, signal chain, CubeMX config, NVIC, DMA |
 | [spec-01-bringup](spec-01-bringup.md) | **COMPLETE** ✅ | Board bring-up: DAC8568, ADS131M02, USART1 drivers |
 | [spec-02-dsp-pipeline](spec-02-dsp-pipeline.md) | **COMPLETE** ✅ | Pilot tone + Goertzel extraction + Vπ characterization |
-| [spec-03-mzm-quad](spec-03-mzm-quad.md) | **In Progress (~95%)** | MZM full-range operating point control, current DC-assisted QUAD path validated |
-| [spec-04-robustness](spec-04-robustness.md) | Pending | Robustness, tuning interface, parameter persistence |
-| [spec-05-multi-modulator](spec-05-multi-modulator.md) | Future | DDMZM, DPMZM, DPQPSK, PM support |
+| [spec-03-mzm-quad](spec-03-mzm-quad.md) | **Complete (milestone)** | MZM full-range operating point control baseline, kept as previous-stage reference |
+| [spec-04-mzm-no-dc-5hz](spec-04-mzm-no-dc-5hz.md) | **COMPLETE** ✅ | 5 Hz dual-scan, all-target no-DC control — validated 2026-04-13 |
+| [spec-05-robustness](spec-05-robustness.md) | Pending | Robustness, tuning interface, parameter persistence |
+| [spec-06-multi-modulator](spec-06-multi-modulator.md) | Future | DDMZM, DPMZM, DPQPSK, PM support |
 
 ## Key Technical Parameters
 
@@ -24,7 +25,7 @@
 | ADC sample rate | 64 kSPS | ADS131M02 OSR=128, HR mode, 8.192 MHz CLKIN (verified empirically) |
 | Pilot base period | 64 samples | 1 cycle at 64 kSPS × 1 kHz |
 | Goertzel block N | 1280 | 20 coherent pilot cycles/block (20 ms window) |
-| Control loop rate | ~10 Hz | 5 Goertzel blocks/update (100 ms latency) |
+| Control loop rate | ~5 Hz | 10 Goertzel blocks/update (200 ms latency) |
 | HSE crystal | 8.192 MHz | Divides evenly for ADC CLKIN; MCO1 on PA8 |
 | FPU | FPv5-SP (hard float) | No software emulation needed |
 
@@ -52,6 +53,6 @@ PD → TIA(OPA140) → ADS131M02 CH0 → Goertzel(f0, 2f0)
 ## Measurement Artifacts
 
 - Scan raw data and derived plots live under `docs/scans/`
-- Raw UART captures: `docs/scans/raw/`
+- Raw CSV captures: `docs/scans/raw/`
 - Generated figures: `docs/scans/plots/`
 - Repository keeps only the current retained validation set; see `docs/scans/README.md`

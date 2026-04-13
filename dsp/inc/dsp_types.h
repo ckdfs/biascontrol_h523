@@ -26,8 +26,8 @@
 #define DSP_GOERTZEL_BLOCK_SIZE      (DSP_PILOT_PERIOD_SAMPLES * DSP_GOERTZEL_BLOCK_CYCLES)
 
 /** Number of Goertzel blocks per control update.
- *  With N=1280 and decimation=5, control rate is 64k / (1280 * 5) = 10 Hz. */
-#define DSP_CONTROL_DECIMATION       5
+ *  With N=1280 and decimation=10, control rate is 64k / (1280 * 10) = 5 Hz. */
+#define DSP_CONTROL_DECIMATION       10
 
 /* ========================================================================= */
 /*  Harmonic analysis result — shared between DSP and Control layers         */

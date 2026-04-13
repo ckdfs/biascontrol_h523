@@ -20,10 +20,6 @@ typedef struct {
     float bias_peak_v;               /**< Central peak bias anchor (V) */
     float bias_quad_pos_v;           /**< Rising-slope quadrature anchor (V) */
     float bias_quad_neg_v;           /**< Falling-slope quadrature anchor (V) */
-    float cal_dc_null_v;             /**< Calibrated DC at null with pilot applied */
-    float cal_dc_peak_v;             /**< Calibrated DC at peak with pilot applied */
-    float cal_dc_quad_pos_v;         /**< Calibrated DC at quad+ with pilot applied */
-    float cal_dc_quad_neg_v;         /**< Calibrated DC at quad- with pilot applied */
 
     /* Harmonic-axis calibration used by the phase-vector controller */
     float cal_h1_offset;            /**< H1 signed offset at zero-crossings */
@@ -34,8 +30,6 @@ typedef struct {
     float cal_h2_axis_sign;         /**< Sign that maps H2 axis to +cos(phi) */
     float cal_pilot_amplitude_v;    /**< Pilot peak amplitude used during axis calibration */
     bool  cal_harmonics_valid;      /**< True after successful harmonic-axis calibration */
-
-    /* Affine calibration used by the normalized phase observer */
     bool  cal_affine_valid;         /**< True after successful affine calibration */
     float cal_affine_o1;            /**< Affine offset for H1 signed harmonic */
     float cal_affine_o2;            /**< Affine offset for H2 signed harmonic */
@@ -43,6 +37,9 @@ typedef struct {
     float cal_affine_m12;           /**< Affine matrix row 1 col 2 */
     float cal_affine_m21;           /**< Affine matrix row 2 col 1 */
     float cal_affine_m22;           /**< Affine matrix row 2 col 2 */
+    float cal_dc_null_v;            /**< TIA DC voltage at extinction */
+    float cal_dc_peak_v;            /**< TIA DC voltage at maximum transmission */
+    bool  cal_dc_valid;             /**< True after DC calibration is available */
 
     /* Control parameters */
     float kp;                   /**< PID proportional gain */

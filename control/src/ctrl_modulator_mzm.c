@@ -7,7 +7,7 @@
 #endif
 
 /* Lock threshold on the normalized phase error. 0.10 rad / pi ≈ 0.032. */
-#define MZM_LOCK_THRESHOLD_NORM      (0.10f / (float)M_PI)
+#define MZM_LOCK_THRESHOLD_NORM      (0.20f / (float)M_PI)
 #define MZM_MAX_PHASE_STEP_RAD       (0.5f * (float)M_PI)
 /*
  * Observer update gains for the (obs_x, obs_y) unit vector.
@@ -24,7 +24,7 @@
 #define MZM_OBS_ALPHA_X_MINMAX       0.30f
 #define MZM_OBS_ALPHA_X_QUAD         0.08f
 #define MZM_OBS_ALPHA_Y_MINMAX       0.02f
-#define MZM_OBS_ALPHA_Y_QUAD         0.01f
+#define MZM_OBS_ALPHA_Y_QUAD         0.005f
 
 /* Reject lock when the recovered phase vector is too small/noisy. */
 #define MZM_MIN_VECTOR_RADIUS        0.10f
@@ -32,8 +32,6 @@
 /* Minimum calibrated axis amplitudes (raw signed-harmonic units). */
 #define MZM_MIN_AXIS_GAIN_H1         1e-4f
 #define MZM_MIN_AXIS_GAIN_H2         1e-5f
-#define MZM_MIN_DC_SPAN_V            0.05f
-#define MZM_DC_Y_CLAMP               1.25f
 
 /*
  * Voltage lock window as a fraction of Vπ.
@@ -45,6 +43,64 @@
 /* Fallback lock threshold in raw signed-harmonic units. */
 #define MZM_LOCK_THRESHOLD_FALLBACK  0.01f
 
+/*
+ * Voltage spring: adds a gentle restoring force toward the calibrated target
+ * voltage when the harmonic-based error is unreliable (near QUAD, where
+ * H2 → 0 by physics).  Weight = sin²(φ_target): 1.0 at QUAD, 0.0 at
+ * MIN/MAX.  Spring time constant τ ≈ Vπ / (K_spring × ki) ≈ 18 s at
+ * ki=0.75, Vπ=5.4 V.  This prevents integrator runaway caused by the
+ * ~mV noise bias on obs_y without fighting the harmonic signal away from QUAD.
+ */
+#define MZM_VOLTAGE_SPRING_K         0.60f
+
+/*
+ * Low-pass on the observer-derived error term (always active, no gate).
+ *
+ * alpha = f(spring_weight): 0.20 at QUAD, 1.0 at MIN/MAX (pass-through).
+ * With DC offset correction active, the ungated LPF is safe: the DC bias
+ * that previously caused limit cycles is subtracted before the LPF, so
+ * alpha=0.20 only smooths residual noise without adding systematic lag.
+ */
+#define MZM_OBS_ERROR_ALPHA_QUAD     0.10f
+
+/*
+ * Online DC offset correction for obs_term_raw.
+ *
+ * Near QUAD, H2 → 0 so obs_term_raw (≈ obs_y = cos(φ)) is noise-dominated.
+ * A fast EMA (α = 0.50, τ ≈ 2 control updates ≈ 0.4 s) tracks and removes
+ * this noise offset, driving obs_term_corr → 0.  With the observer
+ * contribution zeroed out, the voltage spring alone drives bias → target_v,
+ * which is stable and accurate (spring is voltage-based, not H2-based).
+ *
+ * A slower α (0.01, τ = 20 s) caused oscillation because obs_term_raw
+ * changes as φ changes — obs_dc_est chases a moving target and over-corrects
+ * as the spring simultaneously pulls the bias, forming a ~60 s limit cycle.
+ */
+#define MZM_OBS_DC_ALPHA    0.50f
+#define MZM_OBS_DC_WARMUP   5U
+
+/*
+ * DC outer loop: slow EMA of the DC-channel phase error (err_dc).
+ *
+ * The observer-based inner loop can settle at a false equilibrium where
+ * obs_term + spring ≈ 0 but DC says the phase is off (e.g., +9° from QUAD).
+ * This outer loop corrects the spring reference voltage:
+ *
+ *   target_v_eff = cal_quad_v + err_dc_ema × Vπ/π
+ *
+ * When err_dc_ema converges (locked, τ≈20s), the spring pulls the bias
+ * toward the true optical QUAD instead of the calibrated voltage anchor.
+ *
+ * Only active when DC calibration is available. Gated on lock state so
+ * transient phases don't corrupt the correction. Reset on recalibration.
+ *
+ * NOTE: A DC-based outer loop (shifting the spring target based on err_dc
+ * EMA) was tested and found to be unstable: the spring target correction
+ * couples with obs_dc_est to form a slow limit cycle, dropping lock rate.
+ * The correct approach is to seed obs_dc_est from the calibrated obs_y value
+ * measured at the true QUAD point during the bias scan — see mzm_set_obs_dc_seed().
+ */
+
 /* Custom target phase for BIAS_POINT_CUSTOM, set via mzm_set_custom_phase() */
 static float s_custom_phase_rad = (float)M_PI / 2.0f;  /* default: quadrature */
 
@@ -55,9 +111,17 @@ static float s_cal_null_v = 0.0f;
 static float s_cal_peak_v = 0.0f;
 static float s_cal_quad_pos_v = 0.0f;
 static float s_cal_quad_neg_v = 0.0f;
-static bool  s_cal_dc_valid = false;
-static float s_cal_dc_null_v = 0.0f;
-static float s_cal_dc_peak_v = 0.0f;
+
+/* DC-channel calibration (TIA output measured during calibration scan) */
+static bool  s_dc_cal_valid = false;
+static float s_dc_null_v    = 0.0f;  /**< DC voltage at extinction */
+static float s_dc_peak_v    = 0.0f;  /**< DC voltage at maximum transmission */
+
+/* Calibration seed for obs_dc_est: obs_y measured at true QUAD during bias scan.
+ * Initialized by mzm_set_obs_dc_seed() and applied when the control loop first
+ * seeds obs_dc_est, skipping the warmup phase entirely. */
+static float s_obs_dc_seed       = 0.0f;
+static bool  s_obs_dc_seed_valid = false;
 
 /* Harmonic-axis calibration for the phase-vector controller */
 static bool  s_axes_valid = false;
@@ -161,52 +225,26 @@ static float scale_axis_for_pilot(float axis_cal, int order)
     return axis_cal * fabsf(j_now / j_cal);
 }
 
-static bool mzm_get_dc_cosine(const harmonic_data_t *hdata, float *y_dc)
-{
-    float dc_amp;
-    float dc_mid;
-    float y;
-
-    if (!s_cal_dc_valid || hdata == NULL || y_dc == NULL) {
-        return false;
-    }
-
-    dc_amp = 0.5f * (s_cal_dc_peak_v - s_cal_dc_null_v);
-    if (fabsf(dc_amp) < MZM_MIN_DC_SPAN_V) {
-        return false;
-    }
-
-    dc_mid = 0.5f * (s_cal_dc_peak_v + s_cal_dc_null_v);
-    /*
-     * The calibrated DC curve is P = mid - amp * cos(phi):
-     *   null/min  -> +cos(phi) -> low optical power
-     *   peak/max  -> -cos(phi) -> high optical power
-     */
-    y = -(hdata->dc_power - dc_mid) / dc_amp;
-    if (y > MZM_DC_Y_CLAMP) {
-        y = MZM_DC_Y_CLAMP;
-    } else if (y < -MZM_DC_Y_CLAMP) {
-        y = -MZM_DC_Y_CLAMP;
-    }
-    *y_dc = y;
-    return true;
-}
-
 static bool mzm_get_state_vector(const harmonic_data_t *hdata,
                                  float *x, float *y, float *radius,
-                                 bias_point_t target,
                                  const void *ctx)
 {
     float h1s;
     float h2s;
     float a1_scale;
     float a2_scale;
-    bool use_dc_y = (target == BIAS_POINT_QUAD || target == BIAS_POINT_CUSTOM);
 
     (void)ctx;
 
     h1s = hdata->h1_magnitude * cosf(hdata->h1_phase);
-    h2s = hdata->h2_magnitude * cosf(hdata->h2_phase);
+    /*
+     * H2 signal lives primarily in the Goertzel quadrature (Q) component.
+     * Hardware processing delay shifts H2 phase by ≈90°, so
+     * h2_mag × sin(h2_phase) captures ~7× more signal than cos(h2_phase).
+     * Calibration (collect_bias_scan, build_harmonic_axis_model) uses the
+     * same sin projection for consistency.
+     */
+    h2s = hdata->h2_magnitude * sinf(hdata->h2_phase);
 
     if (s_affine_valid) {
         float row1_scale = 1.0f;
@@ -237,12 +275,6 @@ static bool mzm_get_state_vector(const harmonic_data_t *hdata,
         c2 = h2s - s_affine_o2;
         *x = (m22 * c1 - m12 * c2) / det;
         *y = (-m21 * c1 + m11 * c2) / det;
-        if (use_dc_y) {
-            float y_dc;
-            if (mzm_get_dc_cosine(hdata, &y_dc)) {
-                *y = y_dc;
-            }
-        }
         *radius = sqrtf((*x) * (*x) + (*y) * (*y));
         return true;
     }
@@ -257,12 +289,6 @@ static bool mzm_get_state_vector(const harmonic_data_t *hdata,
 
         *x = s_h1_axis_sign * (h1s - s_h1_offset) / a1;
         *y = s_h2_axis_sign * (h2s - s_h2_offset) / a2;
-        if (use_dc_y) {
-            float y_dc;
-            if (mzm_get_dc_cosine(hdata, &y_dc)) {
-                *y = y_dc;
-            }
-        }
         *radius = sqrtf((*x) * (*x) + (*y) * (*y));
         return true;
     }
@@ -281,7 +307,6 @@ static float observer_gain(float hi, float lo, float blend)
 {
     return lo + (hi - lo) * blend;
 }
-
 
 static float target_bias_from_calibration(bias_point_t target)
 {
@@ -312,6 +337,36 @@ static float target_phase_from_calibration(bias_point_t target)
     return (float)M_PI * (target_bias_from_calibration(target) - s_cal_null_v) / s_cal_vpi_v;
 }
 
+static void mzm_reset_diag(bias_ctrl_t *ctrl, bias_point_t target)
+{
+    float target_v = 0.0f;
+    float bias_window = 0.0f;
+
+    if (ctrl == NULL) {
+        return;
+    }
+
+    if (s_cal_valid && s_cal_vpi_v > 0.0f) {
+        target_v = target_bias_from_calibration(target);
+        bias_window = MZM_LOCK_BIAS_FRACTION * s_cal_vpi_v;
+    }
+
+    ctrl->diag_error_obs_term = 0.0f;
+    ctrl->diag_error_dc_term = 0.0f;
+    ctrl->diag_dc_spring_offset_v = 0.0f;
+    ctrl->diag_error_spring_term = 0.0f;
+    ctrl->diag_target_bias_v = target_v;
+    ctrl->diag_bias_err_v = ctrl->bias_voltage - target_v;
+    ctrl->diag_bias_window_v = bias_window;
+    ctrl->diag_vector_radius = 0.0f;
+    ctrl->diag_lock_observer_ok = false;
+    ctrl->diag_lock_radius_ok = false;
+    ctrl->diag_lock_error_ok = false;
+    ctrl->diag_lock_bias_ok = (bias_window <= 0.0f) ||
+                              (fabsf(ctrl->diag_bias_err_v) <= bias_window);
+    ctrl->diag_lock_phase_ok = false;
+}
+
 static bool mzm_update_phase_estimate(const harmonic_data_t *hdata,
                                       bias_point_t target,
                                       bias_ctrl_t *ctrl,
@@ -338,7 +393,7 @@ static bool mzm_update_phase_estimate(const harmonic_data_t *hdata,
         return false;
     }
 
-    if (!mzm_get_state_vector(hdata, &x_meas, &y_meas, &radius_meas, target, ctrl)) {
+    if (!mzm_get_state_vector(hdata, &x_meas, &y_meas, &radius_meas, ctrl)) {
         return false;
     }
 
@@ -435,16 +490,133 @@ static float mzm_compute_error(const harmonic_data_t *hdata,
 
     if (ctx != NULL) {
         bias_ctrl_t *ctrl = (bias_ctrl_t *)ctx;
+        float obs_alpha;
+        float obs_term;
+        float obs_term_raw;
+        float spring_term = 0.0f;
+        float sp = sinf(phi_target);
+        float spring_weight = sp * sp;
+
+        mzm_reset_diag(ctrl, target);
 
         if (mzm_update_phase_estimate(hdata, target, ctrl, &x, &y, &radius, NULL)) {
-            return sinf(phi_target) * y - cosf(phi_target) * x;
+            float error;
+
+            obs_term_raw = sinf(phi_target) * y - cosf(phi_target) * x;
+
+            /*
+             * Online DC offset correction: track the long-term mean of
+             * obs_term_raw near the target phase and subtract it so the PI
+             * sees a zero-mean signal.  Only near QUAD (spring_weight > 0)
+             * where the DC bias matters most.  Warmup 100 updates (~50 s)
+             * before the correction is applied so the estimate has converged.
+             */
+            if (spring_weight > 0.01f) {
+                if (!ctrl->obs_dc_valid) {
+                    /*
+                     * Seed obs_dc_est from the calibrated obs_y value measured
+                     * at true QUAD during the bias scan (mzm_set_obs_dc_seed).
+                     * This seeds it to the actual affine-model bias b_obs,
+                     * skipping the warmup phase and avoiding the false-equilibrium
+                     * tracking problem.  Falls back to obs_term_raw if no seed.
+                     */
+                    if (s_obs_dc_seed_valid) {
+                        ctrl->obs_dc_est   = s_obs_dc_seed;
+                        ctrl->obs_dc_count = MZM_OBS_DC_WARMUP; /* skip warmup */
+                    } else {
+                        ctrl->obs_dc_est   = obs_term_raw;
+                        ctrl->obs_dc_count = 0;
+                    }
+                    ctrl->obs_dc_valid = true;
+                } else {
+                    /*
+                     * Gate DC updates on lock state once warmup is complete.
+                     * During warmup: update unconditionally to seed the estimate.
+                     * After warmup: only update when locked so the estimate
+                     * tracks the steady-state QUAD value rather than off-QUAD
+                     * transients that corrupt the correction.
+                     */
+                    bool in_warmup = ctrl->obs_dc_count < MZM_OBS_DC_WARMUP;
+                    if (in_warmup || ctrl->locked) {
+                        ctrl->obs_dc_est += MZM_OBS_DC_ALPHA *
+                                           (obs_term_raw - ctrl->obs_dc_est);
+                        if (in_warmup) {
+                            ctrl->obs_dc_count++;
+                        }
+                    }
+                }
+            }
+            {
+                float dc_corr = (ctrl->obs_dc_valid &&
+                                 ctrl->obs_dc_count >= MZM_OBS_DC_WARMUP)
+                               ? ctrl->obs_dc_est : 0.0f;
+                float obs_term_corr = obs_term_raw - dc_corr;
+
+                obs_alpha = 1.0f + spring_weight * (MZM_OBS_ERROR_ALPHA_QUAD - 1.0f);
+                if (!ctrl->obs_error_valid) {
+                    ctrl->obs_error_filt = obs_term_corr;
+                    ctrl->obs_error_valid = true;
+                } else {
+                    ctrl->obs_error_filt += obs_alpha *
+                                           (obs_term_corr - ctrl->obs_error_filt);
+                }
+            }
+            obs_term = ctrl->obs_error_filt;
+
+            /*
+             * DC-channel phase diagnostic (monitoring only — not fed into control).
+             *
+             * Transfer: dc_v = dc_null + (dc_peak - dc_null) * sin²(φ/2)
+             * Slope at QUAD: dc_slope = 0.5*(dc_peak - dc_null)  [V/rad]
+             * diag_error_dc_term ≈ (π/2 - φ) near QUAD, reported via UART so
+             * the host can assess control quality from the DC channel independently
+             * of the H1/H2 observer that drives the control loop.
+             */
+            ctrl->diag_error_dc_term = 0.0f;
+            ctrl->diag_dc_spring_offset_v = 0.0f;
+            if (s_dc_cal_valid && spring_weight > 0.01f) {
+                float dc_v     = hdata->dc_power;
+                float dc_range = s_dc_peak_v - s_dc_null_v;
+                float dc_quad  = s_dc_null_v + 0.5f * dc_range;
+                float dc_slope = 0.5f * dc_range;
+                ctrl->diag_error_dc_term = (dc_quad - dc_v) / dc_slope;
+
+                /* DC outer loop via spring target removed (caused limit cycles).
+                 * DC channel is used for monitoring only (diag_error_dc_term). */
+            }
+
+            error = obs_term;
+            /*
+             * Voltage spring: near QUAD, H2 → 0 so obs_y is noise-dominated.
+             * Adding a proportional pull toward the calibrated target voltage
+             * prevents the integrator from winding to the output rail.
+             * Weight = sin²(φ_target): 1.0 at QUAD/CUSTOM-90, 0 at MIN/MAX.
+             *
+             * When the DC outer loop is active, the spring target is corrected
+             * by δV = err_dc_ema × Vπ/π.  This slowly moves the equilibrium
+             * from the calibrated voltage anchor to the true optical QUAD.
+             */
+            if (s_cal_valid && s_cal_vpi_v > 0.0f) {
+                if (spring_weight > 0.01f) {
+                    float target_v = target_bias_from_calibration(target);
+                    ctrl->diag_dc_spring_offset_v = 0.0f;
+                    float v_err = (ctrl->bias_voltage - target_v) / s_cal_vpi_v;
+                    spring_term = -MZM_VOLTAGE_SPRING_K * spring_weight * v_err;
+                    error += spring_term;
+                }
+            }
+            ctrl->diag_error_obs_raw = obs_term_raw;
+            ctrl->diag_error_obs_term = obs_term;
+            ctrl->diag_error_spring_term = spring_term;
+            ctrl->diag_vector_radius = radius;
+            return error;
         }
         if (ctrl->phase_jump_rejected) {
             return 0.0f;
         }
     }
 
-    if (mzm_get_state_vector(hdata, &x, &y, &radius, target, ctx)) {
+    if (mzm_get_state_vector(hdata, &x, &y, &radius, ctx)) {
         if (radius < MZM_MIN_VECTOR_RADIUS) {
             return 0.0f;
         }
@@ -454,7 +626,7 @@ static float mzm_compute_error(const harmonic_data_t *hdata,
     }
 
     h1s = hdata->h1_magnitude * cosf(hdata->h1_phase);
-    h2s = hdata->h2_magnitude * cosf(hdata->h2_phase);
+    h2s = hdata->h2_magnitude * sinf(hdata->h2_phase);
     switch (target) {
     case BIAS_POINT_QUAD:
         return h2s;
@@ -478,15 +650,37 @@ static bool mzm_is_locked(const harmonic_data_t *hdata,
     float radius;
     float h1s;
     float h2s;
+    float error = 0.0f;
 
-    if (ctx != NULL && s_cal_valid && s_cal_vpi_v > 0.0f) {
-        const bias_ctrl_t *ctrl = (const bias_ctrl_t *)ctx;
-        float target_v = target_bias_from_calibration(target);
-        float bias_err = fabsf(ctrl->bias_voltage - target_v);
-        if (bias_err > MZM_LOCK_BIAS_FRACTION * s_cal_vpi_v) {
+    if (ctx != NULL) {
+        bias_ctrl_t *ctrl = (bias_ctrl_t *)ctx;
+
+        ctrl->diag_lock_observer_ok = ctrl->phase_valid &&
+                                      !ctrl->phase_jump_rejected &&
+                                      ctrl->observer_valid;
+        ctrl->diag_lock_radius_ok = false;
+        ctrl->diag_lock_error_ok = false;
+        ctrl->diag_lock_phase_ok = false;
+
+        if (s_cal_valid && s_cal_vpi_v > 0.0f) {
+            float target_v = target_bias_from_calibration(target);
+            float bias_window = MZM_LOCK_BIAS_FRACTION * s_cal_vpi_v;
+
+            ctrl->diag_target_bias_v = target_v;
+            ctrl->diag_bias_err_v = ctrl->bias_voltage - target_v;
+            ctrl->diag_bias_window_v = bias_window;
+            ctrl->diag_lock_bias_ok = fabsf(ctrl->diag_bias_err_v) <= bias_window;
+        } else {
+            ctrl->diag_target_bias_v = 0.0f;
+            ctrl->diag_bias_err_v = 0.0f;
+            ctrl->diag_bias_window_v = 0.0f;
+            ctrl->diag_lock_bias_ok = true;
+        }
+
+        if (!ctrl->diag_lock_bias_ok) {
             return false;
         }
-        if (!ctrl->phase_valid || ctrl->phase_jump_rejected || !ctrl->observer_valid) {
+        if (!ctrl->diag_lock_observer_ok) {
             return false;
         }
     }
@@ -496,7 +690,7 @@ static bool mzm_is_locked(const harmonic_data_t *hdata,
         x = ctrl->obs_x;
         y = ctrl->obs_y;
         radius = sqrtf(x * x + y * y);
-    } else if (mzm_get_state_vector(hdata, &x, &y, &radius, target, ctx)) {
+    } else if (mzm_get_state_vector(hdata, &x, &y, &radius, ctx)) {
         if (radius > MZM_MIN_VECTOR_RADIUS) {
             x /= radius;
             y /= radius;
@@ -505,8 +699,14 @@ static bool mzm_is_locked(const harmonic_data_t *hdata,
         radius = 0.0f;
     }
 
+    if (ctx != NULL) {
+        bias_ctrl_t *ctrl = (bias_ctrl_t *)ctx;
+        ctrl->diag_vector_radius = radius;
+        ctrl->diag_lock_radius_ok = radius >= MZM_MIN_VECTOR_RADIUS;
+    }
+
     if (radius >= MZM_MIN_VECTOR_RADIUS) {
-        float error;
+        bool phase_ok = false;
 
         if (ctx != NULL) {
             const bias_ctrl_t *ctrl = (const bias_ctrl_t *)ctx;
@@ -514,25 +714,34 @@ static bool mzm_is_locked(const harmonic_data_t *hdata,
         } else {
             error = mzm_compute_error(hdata, target, ctx);
         }
-        if (fabsf(error) >= MZM_LOCK_THRESHOLD_NORM) {
-            return false;
-        }
 
         switch (target) {
         case BIAS_POINT_MIN:
-            return y > 0.0f;
+            phase_ok = y > 0.0f;
+            break;
         case BIAS_POINT_MAX:
-            return y < 0.0f;
+            phase_ok = y < 0.0f;
+            break;
         case BIAS_POINT_QUAD:
-            return x > 0.0f;
+            phase_ok = x > 0.0f;
+            break;
         case BIAS_POINT_CUSTOM:
         default:
-            return true;
+            phase_ok = true;
+            break;
         }
+        if (ctx != NULL) {
+            ((bias_ctrl_t *)ctx)->diag_lock_phase_ok = phase_ok;
+            ((bias_ctrl_t *)ctx)->diag_lock_error_ok = fabsf(error) < MZM_LOCK_THRESHOLD_NORM;
+        }
+        if (fabsf(error) >= MZM_LOCK_THRESHOLD_NORM) {
+            return false;
+        }
+        return phase_ok;
     }
 
     h1s = hdata->h1_magnitude * cosf(hdata->h1_phase);
-    h2s = hdata->h2_magnitude * cosf(hdata->h2_phase);
+    h2s = hdata->h2_magnitude * sinf(hdata->h2_phase);
     switch (target) {
     case BIAS_POINT_QUAD:
         return fabsf(h2s) < MZM_LOCK_THRESHOLD_FALLBACK && h1s > 0.0f;
@@ -596,7 +805,9 @@ void mzm_set_calibration(bool valid,
                          float null_v,
                          float peak_v,
                          float quad_pos_v,
-                         float quad_neg_v)
+                         float quad_neg_v,
+                         float dc_null_v,
+                         float dc_peak_v)
 {
     s_cal_valid = valid;
     s_cal_vpi_v = vpi_v;
@@ -604,15 +815,17 @@ void mzm_set_calibration(bool valid,
     s_cal_peak_v = peak_v;
     s_cal_quad_pos_v = quad_pos_v;
     s_cal_quad_neg_v = quad_neg_v;
+    s_dc_null_v = dc_null_v;
+    s_dc_peak_v = dc_peak_v;
+    s_dc_cal_valid = valid && (fabsf(dc_peak_v - dc_null_v) > 1e-4f);
+    s_obs_dc_seed = 0.0f;
+    s_obs_dc_seed_valid = false;
 }
 
-void mzm_set_dc_calibration(bool valid,
-                            float null_dc_v,
-                            float peak_dc_v)
+void mzm_set_obs_dc_seed(float obs_y_quad)
 {
-    s_cal_dc_valid = valid;
-    s_cal_dc_null_v = null_dc_v;
-    s_cal_dc_peak_v = peak_dc_v;
+    s_obs_dc_seed = obs_y_quad;
+    s_obs_dc_seed_valid = true;
 }
 
 void mzm_set_harmonic_axes(bool valid,

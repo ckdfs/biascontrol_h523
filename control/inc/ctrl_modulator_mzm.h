@@ -55,15 +55,9 @@ void mzm_set_calibration(bool valid,
                          float null_v,
                          float peak_v,
                          float quad_pos_v,
-                         float quad_neg_v);
-
-/**
- * Set the calibrated DC extrema used to recover cos(phi) from the optical DC
- * transfer curve when H2 is too weak near QUAD.
- */
-void mzm_set_dc_calibration(bool valid,
-                            float null_dc_v,
-                            float peak_dc_v);
+                         float quad_neg_v,
+                         float dc_null_v,
+                         float dc_peak_v);
 
 /**
  * Set the calibrated harmonic-axis model used by the phase-vector controller.
@@ -89,6 +83,22 @@ void mzm_set_harmonic_axes(bool valid,
                            float h1_axis_sign,
                            float h2_axis_sign,
                            float pilot_amp_v);
+
+/**
+ * Seed the observer DC offset correction from a direct calibration measurement.
+ *
+ * During the bias scan, obs_y is measured at the calibrated QUAD bias point
+ * using the fitted affine model.  At true QUAD the ideal obs_y = 0, so any
+ * non-zero value is the systematic affine-model residual (b_obs).
+ *
+ * Calling this before the control loop starts seeds obs_dc_est = obs_y_quad
+ * and bypasses the warmup, so the correction is accurate from the first update.
+ * This eliminates the false-equilibrium problem where the EMA otherwise
+ * converges to the wrong value after the spring partially cancels the bias.
+ *
+ * @param obs_y_quad  Observer obs_y component measured at QUAD during calibration
+ */
+void mzm_set_obs_dc_seed(float obs_y_quad);
 
 /**
  * Set the affine model used by the normalized phase observer.

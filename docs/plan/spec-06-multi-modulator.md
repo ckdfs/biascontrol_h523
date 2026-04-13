@@ -1,8 +1,8 @@
-# Spec 05 — Multi-Modulator Support
+# Spec 06 — Multi-Modulator Support
 
 > Status: **Future**
 > Goal: Extend to DDMZM, DPMZM, DPQPSK, PM modulator types
-> Depends on: spec-04-robustness (stable MZM platform)
+> Depends on: spec-05-robustness (stable MZM platform)
 
 ## New Files
 

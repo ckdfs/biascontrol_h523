@@ -6,17 +6,7 @@
 #include <float.h>
 
 #define BIAS_CTRL_IQ_EMA_ALPHA 0.20f
-#define BIAS_CTRL_OUTER_DC_TRIGGER_V         0.002f
-#define BIAS_CTRL_OUTER_PROBE_STEP_V         0.005f
-#define BIAS_CTRL_OUTER_TRIM_STEP_V          0.0005f
-#define BIAS_CTRL_OUTER_TRIM_MAX_V           0.200f
-#define BIAS_CTRL_OUTER_PROBE_INTERVAL_UPDATES 50u
-#define BIAS_CTRL_OUTER_PROBE_AVG_UPDATES    2u
-#define BIAS_CTRL_OUTER_PROBE_MIN_DIFF_V     0.0002f
-
-#define OUTER_PROBE_IDLE   0u
-#define OUTER_PROBE_PLUS   1u
-#define OUTER_PROBE_MINUS  2u
+#define BIAS_CTRL_HOLD_ASSIST_LOCK_COUNT 25U
 
 static void apply_iq_ema(float *i_filt, float *q_filt, float i_raw, float q_raw)
 {
@@ -31,98 +21,21 @@ static float clampf(float val, float lo, float hi)
     return val;
 }
 
-static bool target_uses_outer_trim(const bias_ctrl_t *ctrl)
+static void reset_runtime_diag(bias_ctrl_t *ctrl)
 {
-    return ctrl->target_dc_ref_valid &&
-           (ctrl->target_point == BIAS_POINT_MIN || ctrl->target_point == BIAS_POINT_MAX);
+    ctrl->diag_error_obs_raw = 0.0f;
+    ctrl->diag_error_obs_term = 0.0f;
+    ctrl->diag_error_spring_term = 0.0f;
+    ctrl->diag_target_bias_v = 0.0f;
+    ctrl->diag_bias_err_v = 0.0f;
+    ctrl->diag_bias_window_v = 0.0f;
+    ctrl->diag_vector_radius = 0.0f;
+    ctrl->diag_lock_observer_ok = false;
+    ctrl->diag_lock_radius_ok = false;
+    ctrl->diag_lock_error_ok = false;
+    ctrl->diag_lock_bias_ok = false;
+    ctrl->diag_lock_phase_ok = false;
 }
-
-static void outer_trim_reset(bias_ctrl_t *ctrl, bool clear_trim)
-{
-    ctrl->outer_probe_v = 0.0f;
-    ctrl->outer_probe_plus_sum = 0.0f;
-    ctrl->outer_probe_minus_sum = 0.0f;
-    ctrl->outer_probe_interval_count = 0u;
-    ctrl->outer_probe_plus_count = 0u;
-    ctrl->outer_probe_minus_count = 0u;
-    ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
-    if (clear_trim) {
-        ctrl->outer_trim_v = 0.0f;
-    }
-}
-
-static bool outer_trim_update(bias_ctrl_t *ctrl)
-{
-    float dc_now = ctrl->last_harmonics.dc_power;
-
-    if (!target_uses_outer_trim(ctrl)) {
-        outer_trim_reset(ctrl, true);
-        return false;
-    }
-
-    if (!ctrl->locked || ctrl->phase_jump_rejected) {
-        outer_trim_reset(ctrl, false);
-        return false;
-    }
-
-    if (ctrl->outer_probe_stage == OUTER_PROBE_PLUS) {
-        ctrl->outer_probe_plus_sum += dc_now;
-        ctrl->outer_probe_plus_count++;
-        if (ctrl->outer_probe_plus_count >= BIAS_CTRL_OUTER_PROBE_AVG_UPDATES) {
-            ctrl->outer_probe_stage = OUTER_PROBE_MINUS;
-            ctrl->outer_probe_v = -BIAS_CTRL_OUTER_PROBE_STEP_V;
-            ctrl->outer_probe_minus_sum = 0.0f;
-            ctrl->outer_probe_minus_count = 0u;
-        }
-        return true;
-    }
-
-    if (ctrl->outer_probe_stage == OUTER_PROBE_MINUS) {
-        ctrl->outer_probe_minus_sum += dc_now;
-        ctrl->outer_probe_minus_count++;
-        if (ctrl->outer_probe_minus_count >= BIAS_CTRL_OUTER_PROBE_AVG_UPDATES) {
-            float dc_plus = ctrl->outer_probe_plus_sum / (float)ctrl->outer_probe_plus_count;
-            float dc_minus = ctrl->outer_probe_minus_sum / (float)ctrl->outer_probe_minus_count;
-            float diff = dc_plus - dc_minus;
-
-            if (fabsf(diff) >= BIAS_CTRL_OUTER_PROBE_MIN_DIFF_V) {
-                float step_sign = 0.0f;
-                if (ctrl->target_point == BIAS_POINT_MIN) {
-                    step_sign = (dc_plus < dc_minus) ? 1.0f : -1.0f;
-                } else if (ctrl->target_point == BIAS_POINT_MAX) {
-                    step_sign = (dc_plus > dc_minus) ? 1.0f : -1.0f;
-                }
-                ctrl->outer_trim_v = clampf(ctrl->outer_trim_v + step_sign * BIAS_CTRL_OUTER_TRIM_STEP_V,
-                                            -BIAS_CTRL_OUTER_TRIM_MAX_V,
-                                            BIAS_CTRL_OUTER_TRIM_MAX_V);
-            }
-
-            ctrl->outer_probe_v = 0.0f;
-            ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
-            ctrl->outer_probe_interval_count = 0u;
-        }
-        return true;
-    }
-
-    if (fabsf(dc_now - ctrl->target_dc_ref) <= BIAS_CTRL_OUTER_DC_TRIGGER_V) {
-        ctrl->outer_probe_interval_count = 0u;
-        return false;
-    }
-
-    ctrl->outer_probe_interval_count++;
-    if (ctrl->outer_probe_interval_count >= BIAS_CTRL_OUTER_PROBE_INTERVAL_UPDATES) {
-        ctrl->outer_probe_stage = OUTER_PROBE_PLUS;
-        ctrl->outer_probe_v = BIAS_CTRL_OUTER_PROBE_STEP_V;
-        ctrl->outer_probe_plus_sum = 0.0f;
-        ctrl->outer_probe_minus_sum = 0.0f;
-        ctrl->outer_probe_plus_count = 0u;
-        ctrl->outer_probe_minus_count = 0u;
-        ctrl->outer_probe_interval_count = 0u;
-    }
-
-    return false;
-}
-
 
 static float robust_meanf(const float *vals, uint32_t n)
 {
@@ -242,16 +155,14 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     ctrl->last_error = 0.0f;
     ctrl->obs_x = 0.0f;
     ctrl->obs_y = 1.0f;
-    ctrl->target_dc_ref = 0.0f;
-    ctrl->outer_trim_v = 0.0f;
-    ctrl->outer_probe_v = 0.0f;
-    ctrl->outer_probe_plus_sum = 0.0f;
-    ctrl->outer_probe_minus_sum = 0.0f;
-    ctrl->outer_probe_interval_count = 0u;
-    ctrl->outer_probe_plus_count = 0u;
-    ctrl->outer_probe_minus_count = 0u;
-    ctrl->outer_probe_stage = OUTER_PROBE_IDLE;
-
+    ctrl->obs_error_filt = 0.0f;
+    ctrl->obs_error_valid = false;
+    reset_runtime_diag(ctrl);
+    ctrl->lock_streak = 0;
+    ctrl->hold_assist_active = false;
+    ctrl->obs_dc_est = 0.0f;
+    ctrl->obs_dc_count = 0;
+    ctrl->obs_dc_valid = false;
     /* Decimation */
     ctrl->block_count = 0;
     ctrl->control_decimation = DSP_CONTROL_DECIMATION;
@@ -267,7 +178,6 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
     ctrl->locked = false;
     ctrl->phase_valid = false;
     ctrl->phase_jump_rejected = false;
-    ctrl->target_dc_ref_valid = false;
     ctrl->observer_valid = false;
 
     /* Call modulator-specific init if provided */
@@ -357,10 +267,6 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
                                               ctrl->h2_q_filt * ctrl->h2_q_filt);
     ctrl->last_harmonics.h2_phase     = atan2f(ctrl->h2_q_filt, ctrl->h2_i_filt);
 
-    if (outer_trim_update(ctrl)) {
-        return false;
-    }
-
     /* Compute error using modulator strategy */
     if (ctrl->strategy == NULL || ctrl->strategy->compute_error == NULL) {
         return false;
@@ -372,6 +278,10 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
                                                 ctrl);
 
     if (ctrl->phase_jump_rejected) {
+        ctrl->diag_lock_observer_ok = false;
+        ctrl->diag_lock_radius_ok = false;
+        ctrl->diag_lock_error_ok = false;
+        ctrl->diag_lock_phase_ok = false;
         ctrl->locked = false;
         return false;
     }
@@ -387,6 +297,14 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
                                                   ctrl->target_point,
                                                   ctrl);
     }
+    if (ctrl->locked) {
+        if (ctrl->lock_streak < UINT16_MAX) {
+            ctrl->lock_streak++;
+        }
+    } else {
+        ctrl->lock_streak = 0;
+    }
+    ctrl->hold_assist_active = (ctrl->lock_streak >= BIAS_CTRL_HOLD_ASSIST_LOCK_COUNT);
 
     return true;
 }
@@ -394,8 +312,7 @@ bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc)
 float bias_ctrl_get_dac_output(bias_ctrl_t *ctrl)
 {
     float pilot_sample = pilot_gen_next(&ctrl->pilot);
-    return clampf(ctrl->bias_voltage + ctrl->outer_trim_v + ctrl->outer_probe_v + pilot_sample,
-                  -10.0f, 10.0f);
+    return clampf(ctrl->bias_voltage + pilot_sample, -10.0f, 10.0f);
 }
 
 void bias_ctrl_start(bias_ctrl_t *ctrl)
@@ -435,9 +352,16 @@ void bias_ctrl_start(bias_ctrl_t *ctrl)
     ctrl->last_error = 0.0f;
     ctrl->obs_x = 0.0f;
     ctrl->obs_y = 1.0f;
+    ctrl->obs_error_filt = 0.0f;
+    ctrl->obs_error_valid = false;
+    reset_runtime_diag(ctrl);
+    ctrl->lock_streak = 0;
+    ctrl->hold_assist_active = false;
+    ctrl->obs_dc_est = 0.0f;
+    ctrl->obs_dc_count = 0;
+    ctrl->obs_dc_valid = false;
     ctrl->phase_valid = false;
     ctrl->phase_jump_rejected = false;
-    outer_trim_reset(ctrl, true);
     ctrl->running = true;
     ctrl->locked = false;
     ctrl->observer_valid = false;
@@ -572,11 +496,17 @@ void bias_ctrl_set_target(bias_ctrl_t *ctrl, bias_point_t target)
     pid_reset(&ctrl->pid);
     ctrl->phase_est_rad = 0.0f;
     ctrl->last_error = 0.0f;
+    reset_runtime_diag(ctrl);
     ctrl->locked = false;
     ctrl->phase_valid = false;
     ctrl->phase_jump_rejected = false;
     ctrl->observer_valid = false;
-    outer_trim_reset(ctrl, true);
+    ctrl->obs_error_valid = false;
+    ctrl->lock_streak = 0;
+    ctrl->hold_assist_active = false;
+    ctrl->obs_dc_est = 0.0f;
+    ctrl->obs_dc_count = 0;
+    ctrl->obs_dc_valid = false;
 }
 
 void bias_ctrl_set_modulator(bias_ctrl_t *ctrl, modulator_type_t type)
@@ -585,22 +515,17 @@ void bias_ctrl_set_modulator(bias_ctrl_t *ctrl, modulator_type_t type)
     pid_reset(&ctrl->pid);
     ctrl->phase_est_rad = 0.0f;
     ctrl->last_error = 0.0f;
+    reset_runtime_diag(ctrl);
     ctrl->locked = false;
     ctrl->phase_valid = false;
     ctrl->phase_jump_rejected = false;
     ctrl->observer_valid = false;
-    outer_trim_reset(ctrl, true);
+    ctrl->obs_error_valid = false;
+    ctrl->lock_streak = 0;
+    ctrl->hold_assist_active = false;
     if (ctrl->strategy && ctrl->strategy->init) {
         ctrl->strategy->init(ctrl->strategy->ctx);
     }
-}
-
-void bias_ctrl_set_target_dc_ref(bias_ctrl_t *ctrl, float target_dc_ref, bool valid)
-{
-    ctrl->target_dc_ref = target_dc_ref;
-    ctrl->target_dc_ref_valid = valid;
-    ctrl->observer_valid = false;
-    outer_trim_reset(ctrl, true);
 }
 
 void bias_ctrl_set_output_limits(bias_ctrl_t *ctrl, float out_min, float out_max)

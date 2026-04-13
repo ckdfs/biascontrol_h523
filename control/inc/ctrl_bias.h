@@ -21,7 +21,7 @@
  * Control flow:
  *   1. ADC ISR calls bias_ctrl_feed_sample() for each new sample pair
  *   2. Internally runs Goertzel on CH0 for f0 and 2*f0
- *   3. Accumulates CH1 as the DC reference
+ *   3. Accumulates CH1 as a debug/monitor DC observable
  *   4. Every N samples (Goertzel block), accumulates results
  *   5. Every M blocks (control decimation), runs the PID loop
  *   5. PID output updates the DAC bias setpoint
@@ -63,15 +63,27 @@ typedef struct {
     float last_error;               /**< Latest accepted normalized phase error */
     float obs_x;                    /**< Observer state: estimated sin(phi) */
     float obs_y;                    /**< Observer state: estimated cos(phi) */
-    float target_dc_ref;            /**< Reference DC captured during calibration */
-    float outer_trim_v;             /**< Slow outer-loop trim for MIN/MAX */
-    float outer_probe_v;            /**< Temporary probe offset for slow extremum seeking */
-    float outer_probe_plus_sum;
-    float outer_probe_minus_sum;
-    uint16_t outer_probe_interval_count;
-    uint8_t outer_probe_plus_count;
-    uint8_t outer_probe_minus_count;
-    uint8_t outer_probe_stage;
+    float obs_error_filt;           /**< Low-pass filtered observer error term */
+    bool obs_error_valid;           /**< True once obs_error_filt has been seeded */
+    float diag_error_obs_raw;       /**< Raw observer-only error before low-pass */
+    float diag_error_obs_term;      /**< Blended error term (DC-primary near QUAD, observer elsewhere) */
+    float diag_error_dc_term;       /**< DC-channel phase error diagnostic (rad units, 0 when DC cal not valid) */
+    float diag_dc_spring_offset_v;  /**< Spring target correction applied by DC outer loop (V) */
+    float diag_error_spring_term;   /**< Bias-spring contribution added to the error */
+    float diag_target_bias_v;       /**< Calibrated target bias used by lock diagnostics */
+    float diag_bias_err_v;          /**< Signed bias error relative to the calibrated target */
+    float diag_bias_window_v;       /**< Allowed lock window around the calibrated target */
+    float diag_vector_radius;       /**< Recovered phase-vector radius before normalization */
+    bool diag_lock_observer_ok;     /**< Observer state is valid for lock evaluation */
+    bool diag_lock_radius_ok;       /**< Phase vector is strong enough for observer locking */
+    bool diag_lock_error_ok;        /**< |error| is inside the normalized lock threshold */
+    bool diag_lock_bias_ok;         /**< Bias is inside the calibrated lock window */
+    bool diag_lock_phase_ok;        /**< Recovered phase is on the correct local branch */
+    uint16_t lock_streak;           /**< Consecutive locked control updates */
+    bool hold_assist_active;        /**< Hold-only damping enabled after lock acquisition */
+    float obs_dc_est;               /**< Slow EMA of obs_term_raw DC offset at the target phase */
+    uint32_t obs_dc_count;          /**< Update count since obs_dc_est was last reset */
+    bool obs_dc_valid;              /**< True after first estimation update */
 
     /* Decimation counter for control loop rate */
     uint32_t block_count;
@@ -85,7 +97,6 @@ typedef struct {
     bool locked;
     bool phase_valid;
     bool phase_jump_rejected;
-    bool target_dc_ref_valid;
     bool observer_valid;
 } bias_ctrl_t;
 
@@ -119,7 +130,7 @@ void bias_ctrl_init(bias_ctrl_t *ctrl,
  *
  * @param ctrl       Controller state
  * @param sample_ac  CH0 sample used for H1/H2 extraction
- * @param sample_dc  CH1 sample used for DC normalization
+ * @param sample_dc  CH1 sample used for debug DC observation
  * @return           true if control loop ran this cycle (new bias available)
  */
 bool bias_ctrl_feed_sample(bias_ctrl_t *ctrl, float sample_ac, float sample_dc);
@@ -161,11 +172,6 @@ void bias_ctrl_set_target(bias_ctrl_t *ctrl, bias_point_t target);
  * Change the modulator type at runtime.
  */
 void bias_ctrl_set_modulator(bias_ctrl_t *ctrl, modulator_type_t type);
-
-/**
- * Update the reference DC used by the slow MIN/MAX outer trim loop.
- */
-void bias_ctrl_set_target_dc_ref(bias_ctrl_t *ctrl, float target_dc_ref, bool valid);
 
 /**
  * Narrow the PI output clamp (and integral anti-windup limits) at runtime.

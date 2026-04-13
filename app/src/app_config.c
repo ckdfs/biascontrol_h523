@@ -13,10 +13,6 @@ void app_config_defaults(void)
     config.bias_peak_v = 0.0f;
     config.bias_quad_pos_v = 0.0f;
     config.bias_quad_neg_v = 0.0f;
-    config.cal_dc_null_v = 0.0f;
-    config.cal_dc_peak_v = 0.0f;
-    config.cal_dc_quad_pos_v = 0.0f;
-    config.cal_dc_quad_neg_v = 0.0f;
     config.cal_h1_offset = 0.0f;
     config.cal_h2_offset = 0.0f;
     config.cal_h1_axis = 0.0f;
@@ -32,8 +28,11 @@ void app_config_defaults(void)
     config.cal_affine_m12 = 0.0f;
     config.cal_affine_m21 = 0.0f;
     config.cal_affine_m22 = 0.0f;
+    config.cal_dc_null_v = 0.0f;
+    config.cal_dc_peak_v = 0.0f;
+    config.cal_dc_valid  = false;
     config.kp = 1.0f;
-    config.ki = 10.0f;
+    config.ki = 5.0f;
     config.initial_bias_v = 0.0f;
     config.pilot_amplitude_v = 0.05f;   /* 50 mV */
     config.pilot_freq_hz = 1000.0f;     /* 1 kHz */

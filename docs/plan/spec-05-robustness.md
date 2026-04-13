@@ -1,8 +1,8 @@
-# Spec 04 — Robustness, Tuning & Persistence
+# Spec 05 — Robustness, Tuning & Persistence
 
 > Status: **Pending**
 > Goal: Long-term stability verification, runtime PID tuning, parameter persistence, and precision validation
-> Depends on: spec-03-mzm-quad (full-range operating point control) — ~90% complete
+> Depends on: spec-04-mzm-no-dc-5hz (new baseline control path)
 
 ## Files to Modify
 
