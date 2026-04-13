@@ -28,7 +28,8 @@ app/inc, app/src              Application state machine, config
 test/                         Host-side unit tests
 cmake/                        Toolchain files
 docs/                         Project documentation
-  plan/development-plan.md    Development plan (AUTHORITATIVE — update this, not .claude/plans/)
+  plan/README.md              Development plan index (AUTHORITATIVE — update this, not .claude/plans/)
+  plan/spec-04-mzm-no-dc-5hz.md  Current control spec (COMPLETE ✅)
   hardware/                   Netlists, schematics, board-level docs
 ```
 
@@ -147,11 +148,83 @@ make && ctest
 - Minimum threshold: 10% of max H1 observed in the scan.
 - Measured Vπ for the current MZM on VA channel: **5.451 V** (±0.065 V, 4 runs).
 
+## Control / Phase-04 Notes (spec-04, 2026-04)
+
+### Calibration — `cal bias` (dual-scan)
+- **Pass 1 fast sweep** (0.1 V/step, 3 blocks/step): finds Vπ and canonical period
+  (pair of H1 zeros with smallest midpoint absolute value).
+- **Pass 2 slow sweep** (0.05 V/step, 10 blocks/step, single period): fits least-squares
+  affine model `[H1s, H2s] = o + M × [sin φ, cos φ]`. Pass 2 failure → `start` returns to IDLE.
+
+### H2 Q-component (critical, easy to regress)
+- H2 signal lives in **`h2_mag × sin(h2_phase)`**, NOT `cos(h2_phase)`.
+- Hardware processing delay ≈82° for H2 (≈41° for H1). Using I (cos) component gives ~7×
+  weaker signal and a near-singular affine H2 row. Both pass2 scan and runtime use `sin` consistently.
+
+### Runtime control pipeline (5 Hz)
+```
+ADC ISR (64 kSPS)
+  ↓ N=1280 samples = 20 ms (20 integer pilot cycles, no spectral leakage)
+  ↓ 10 blocks buffered → robust mean (median-trim, remove 1 min+max) → IQ EMA α=0.20
+  ↓ Affine inverse: [x_meas, y_meas] = M_eff⁻¹ × [H1s−o1, H2s−o2]
+      M_eff rows scaled by J₁(m_now)/J₁(m_cal) and J₂(m_now)/J₂(m_cal)  (Bessel compensation)
+  ↓ Normalize to unit circle → [obs_x, obs_y] ≈ [sin φ, cos φ]  (amplitude-independent)
+  ↓ obs_term_raw = sin(φ_t)·obs_y − cos(φ_t)·obs_x  (= obs_y at QUAD)
+  ↓ obs_dc correction (subtract EMA of obs_term_raw, see below)
+  ↓ error = obs_term + spring_term → PI → DAC
+```
+
+### Voltage spring
+```
+spring_term = −0.60 × sin²(φ_target) × (bias_v − target_v) / Vπ
+```
+- Weight = sin²(φ_target): 1.0 at QUAD, 0.0 at MIN/MAX.
+- Prevents integrator runaway near QUAD where H2→0 makes obs_term noise-dominated.
+- Purely voltage-based; no optical or RF signal dependency.
+
+### obs_dc online correction (α = 0.50, τ ≈ 0.4 s)
+- Near QUAD, H2→0 so obs_term_raw has a noise DC bias that would slowly wind the integrator.
+- Fast EMA tracks and subtracts it: `obs_dc_est += 0.50 × (obs_term_raw − obs_dc_est)`.
+- After warmup (5 updates), **only updates when locked** — prevents off-QUAD transients from
+  corrupting the estimate.
+- **Why α=0.01 fails**: τ≈20 s is slower than the spring's response. As the spring moves
+  bias toward target_v, obs_term_raw changes, but obs_dc_est lags → over-correction →
+  spring fights obs_dc → ~60 s limit cycle. α=0.50 (τ≈0.4 s) eliminates this.
+- **obs_dc seed is disabled**: a seed computed from H2 at QUAD is noise-dominated (H2→0
+  there), yielding wrong values like −0.4508. The EMA converges naturally without a seed.
+
+### Observer initialization (cold start)
+- First update: seed `obs_x = sin(φ_cal), obs_y = cos(φ_cal)` from the calibrated bias
+  voltage, not from raw H1/H2 measurement. Near QUAD the raw measurement is noise-dominated
+  and can produce a wrong-sign obs_y, causing the PI to ramp hard in the wrong direction.
+
+### Lock criteria (all 5 must hold simultaneously)
+| Condition | Criterion |
+|-----------|-----------|
+| `bias_ok` | `\|bias − target_v\| ≤ 0.30 × Vπ` (prevents cross-period lock) |
+| `observer_ok` | `phase_valid AND NOT jump_rejected AND observer_valid` |
+| `radius_ok` | `sqrt(obs_x²+obs_y²) ≥ 0.10` (signal strength) |
+| `error_ok` | `\|last_error\| < 0.20/π ≈ 0.0637` |
+| `phase_ok` | QUAD: `obs_x > 0`; MIN: `obs_y > 0`; MAX: `obs_y < 0` |
+
+25 consecutive passes → `hold_assist_active = true`.
+
+### Validated performance (2026-04-13, Vπ = 5.450 V)
+| Target | DC phase mean | Std | First lock |
+|--------|--------------|-----|-----------|
+| QUAD 90° | 90.28° | 0.10° | 0.0 s |
+| MAX 180° | 178.07° | 1.16° | 0.5 s |
+| MIN 0° | 0.15° | 1.15° | 0.5 s |
+| CUSTOM 45° | 42.46° | 1.02° | 0.0 s |
+| CUSTOM 135° | 136.36° | 0.60° | 0.5 s |
+| CUSTOM 17° | 16.21° | 1.01° | 0.5 s |
+
 ## Critical Invariants
-- Goertzel block size N must ensure integer cycles of pilot frequency (no spectral leakage)
-- Longer coherent Goertzel blocks are preferred for weak harmonic measurements, as long as the
-  integer-cycle rule is preserved
-- Error computation uses calibrated H1/H2 phase-vector axes with online J1/J2 compensation, not DC normalization
-- DAC output = bias_setpoint + pilot_sample, updated synchronously with ADC
-- PI controller must have anti-windup clamping
+- Goertzel block N=1280 ensures exactly 20 integer pilot cycles (no spectral leakage)
+- H2 uses `h2_mag × sin(h2_phase)` (Q component) — using cos gives ~7× weaker signal
+- Affine model rows scaled by Bessel ratios J_n(m_now)/J_n(m_cal) before inversion
+- Normalization to unit circle makes phase estimate independent of optical and RF power
+- DAC output = bias_setpoint + pilot_sample, clamped to ±10 V
+- PI controller has anti-windup clamping; integrator seeded from coarse sweep on start
 - DRDY interrupt has highest NVIC priority; control loop runs at lower priority
+- DC channel (CH1) is monitoring-only — NOT used in runtime error or lock criteria
