@@ -56,56 +56,59 @@ file(GLOB CORE_SRC ${CUBEMX_DIR}/Core/Src/*.c)
 # --------------------------------------------------------------------------
 
 # Driver layer (custom IC drivers: ADS131M02, DAC8568, board GPIO)
-file(GLOB DRIVER_SRC drivers/src/*.c)
+file(GLOB DRIVER_SRC src/drivers/*.c)
 
 # DSP layer (pure math, no hardware dependencies)
-file(GLOB DSP_SRC dsp/src/*.c)
+file(GLOB DSP_SRC src/dsp/*.c)
 
 # Control layer (bias loop, modulator strategies, PID)
-file(GLOB CTRL_SRC control/src/*.c)
+file(GLOB CTRL_SRC src/control/*.c)
 
 # Application layer (state machine, config)
-file(GLOB APP_SRC app/src/*.c)
+file(GLOB APP_SRC src/app/*.c)
 
 # --------------------------------------------------------------------------
-# Executable
+# Executable (firmware target — skipped when BUILD_TESTS=ON, since the host
+# compiler cannot assemble the ARM startup file)
 # --------------------------------------------------------------------------
-add_executable(${PROJECT_NAME}.elf
-    ${STARTUP_SRC}
-    ${HAL_SRC}
-    ${CORE_SRC}
-    ${DRIVER_SRC}
-    ${DSP_SRC}
-    ${CTRL_SRC}
-    ${APP_SRC}
-)
+if(NOT BUILD_TESTS)
+    add_executable(${PROJECT_NAME}.elf
+        ${STARTUP_SRC}
+        ${HAL_SRC}
+        ${CORE_SRC}
+        ${DRIVER_SRC}
+        ${DSP_SRC}
+        ${CTRL_SRC}
+        ${APP_SRC}
+    )
 
-# Link math library; enable float support in newlib-nano printf/scanf
-target_link_libraries(${PROJECT_NAME}.elf m)
-target_link_options(${PROJECT_NAME}.elf PRIVATE -u _printf_float)
+    # Link math library; enable float support in newlib-nano printf/scanf
+    target_link_libraries(${PROJECT_NAME}.elf m)
+    target_link_options(${PROJECT_NAME}.elf PRIVATE -u _printf_float)
 
-target_include_directories(${PROJECT_NAME}.elf PRIVATE
-    # CubeMX generated headers
-    ${CUBEMX_DIR}/Core/Inc
-    ${CUBEMX_DIR}/Drivers/STM32H5xx_HAL_Driver/Inc
-    ${CUBEMX_DIR}/Drivers/CMSIS/Device/ST/STM32H5xx/Include
-    ${CUBEMX_DIR}/Drivers/CMSIS/Include
-    # Project layers
-    drivers/inc
-    dsp/inc
-    control/inc
-    app/inc
-)
+    target_include_directories(${PROJECT_NAME}.elf PRIVATE
+        # CubeMX generated headers
+        ${CUBEMX_DIR}/Core/Inc
+        ${CUBEMX_DIR}/Drivers/STM32H5xx_HAL_Driver/Inc
+        ${CUBEMX_DIR}/Drivers/CMSIS/Device/ST/STM32H5xx/Include
+        ${CUBEMX_DIR}/Drivers/CMSIS/Include
+        # Project layers
+        src/drivers
+        src/dsp
+        src/control
+        src/app
+    )
 
-# --------------------------------------------------------------------------
-# Post-build: generate .hex and .bin, print size
-# --------------------------------------------------------------------------
-add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.bin
-    COMMAND ${CMAKE_SIZE}    $<TARGET_FILE:${PROJECT_NAME}.elf>
-    COMMENT "Generating HEX/BIN and printing size"
-)
+    # ----------------------------------------------------------------------
+    # Post-build: generate .hex and .bin, print size
+    # ----------------------------------------------------------------------
+    add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.hex
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.bin
+        COMMAND ${CMAKE_SIZE}    $<TARGET_FILE:${PROJECT_NAME}.elf>
+        COMMENT "Generating HEX/BIN and printing size"
+    )
+endif()
 
 # --------------------------------------------------------------------------
 # Host-side test target (native build, not cross-compiled)
@@ -116,25 +119,25 @@ if(BUILD_TESTS)
     enable_testing()
     add_executable(test_goertzel
         test/test_goertzel.c
-        dsp/src/dsp_goertzel.c
+        src/dsp/dsp_goertzel.c
     )
-    target_include_directories(test_goertzel PRIVATE dsp/inc)
+    target_include_directories(test_goertzel PRIVATE src/dsp)
     target_link_libraries(test_goertzel m)
     add_test(NAME goertzel COMMAND test_goertzel)
 
     add_executable(test_pid
         test/test_pid.c
-        control/src/ctrl_pid.c
+        src/control/ctrl_pid.c
     )
-    target_include_directories(test_pid PRIVATE control/inc)
+    target_include_directories(test_pid PRIVATE src/control)
     target_link_libraries(test_pid m)
     add_test(NAME pid COMMAND test_pid)
 
     add_executable(test_mzm_phase
         test/test_mzm_phase.c
-        control/src/ctrl_modulator_mzm.c
+        src/control/ctrl_modulator_mzm.c
     )
-    target_include_directories(test_mzm_phase PRIVATE control/inc dsp/inc)
+    target_include_directories(test_mzm_phase PRIVATE src/control src/dsp)
     target_link_libraries(test_mzm_phase m)
     add_test(NAME mzm_phase COMMAND test_mzm_phase)
 endif()
