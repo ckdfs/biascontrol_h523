@@ -8,10 +8,10 @@
 
 | File | Description |
 |------|-------------|
-| `control/src/ctrl_modulator_ddmzm.c` | Dual-drive MZM strategy |
-| `control/src/ctrl_modulator_dpmzm.c` | Dual-parallel MZM strategy |
-| `control/src/ctrl_modulator_dpqpsk.c` | DP-QPSK strategy |
-| `control/src/ctrl_modulator_pm.c` | Phase modulator strategy |
+| `src/control/ctrl_modulator_ddmzm.c` | Dual-drive MZM strategy |
+| `src/control/ctrl_modulator_dpmzm.c` | Dual-parallel MZM strategy |
+| `src/control/ctrl_modulator_dpqpsk.c` | DP-QPSK strategy |
+| `src/control/ctrl_modulator_pm.c` | Phase modulator strategy |
 
 ## Modulator Types Overview
 
@@ -52,9 +52,9 @@
 
 ## Adding a New Modulator
 
-Follow the Strategy Pattern defined in `control/inc/ctrl_modulator.h`:
+Follow the Strategy Pattern defined in `src/control/ctrl_modulator.h`:
 
-1. Create `control/src/ctrl_modulator_<name>.c` and matching `.h`
+1. Create `src/control/ctrl_modulator_<name>.c` and matching `.h`
 2. Implement `modulator_strategy_t`:
    - `compute_error()`: harmonic data → error signal
    - `is_locked()`: harmonic data → bool

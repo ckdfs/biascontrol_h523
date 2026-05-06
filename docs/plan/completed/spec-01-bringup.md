@@ -41,16 +41,16 @@
 
 | File | Status |
 |------|--------|
-| `drivers/inc/drv_board.h` | ✅ All pin errors fixed; `ADC_SAMPLE_RATE_HZ` corrected to 64000 |
-| `drivers/src/drv_board.c` | ✅ GPIO init, `_write()` blocking UART TX |
-| `drivers/inc/drv_dac8568.h` | ✅ API finalized |
-| `drivers/src/drv_dac8568.c` | ✅ Blocking SPI implementation |
-| `drivers/src/drv_callbacks.c` | ✅ EXTI11→ADC DRDY, SPI2 TxRx→ADC parse, UART TxCplt no-op |
-| `drivers/inc/drv_ads131m02.h` | ✅ OSR defines corrected (offset +4 bug fixed) |
-| `drivers/src/drv_ads131m02.c` | ✅ DMA full-duplex, DRDY ISR, continuous mode; init uses OSR_128 |
-| `app/inc/app_uart.h` | ✅ Created |
-| `app/src/app_uart.c` | ✅ Circular DMA UART RX, ISR-safe command queue |
-| `app/src/app_main.c` | ✅ Full state machine + UART commands; `adc [N]` buffer-first |
+| `src/drivers/drv_board.h` | ✅ All pin errors fixed; `ADC_SAMPLE_RATE_HZ` corrected to 64000 |
+| `src/drivers/drv_board.c` | ✅ GPIO init, `_write()` blocking UART TX |
+| `src/drivers/drv_dac8568.h` | ✅ API finalized |
+| `src/drivers/drv_dac8568.c` | ✅ Blocking SPI implementation |
+| `src/drivers/drv_callbacks.c` | ✅ EXTI11→ADC DRDY, SPI2 TxRx→ADC parse, UART TxCplt no-op |
+| `src/drivers/drv_ads131m02.h` | ✅ OSR defines corrected (offset +4 bug fixed) |
+| `src/drivers/drv_ads131m02.c` | ✅ DMA full-duplex, DRDY ISR, continuous mode; init uses OSR_128 |
+| `src/app/app_uart.h` | ✅ Created |
+| `src/app/app_uart.c` | ✅ Circular DMA UART RX, ISR-safe command queue |
+| `src/app/app_main.c` | ✅ Full state machine + UART commands; `adc [N]` buffer-first |
 | `CMakeLists.txt` | ✅ Added `-u _printf_float` |
 
 ## Task Checklist

@@ -271,13 +271,13 @@ radius >= 0.10
 
 | 文件 | 作用 |
 |------|------|
-| `app/inc/app_config.h` | 保存 calibration anchors、DC 标定和控制参数 |
-| `app/src/app_config.c` | 默认控制参数与 lock timeout |
-| `app/src/app_main.c` | 启动校准、锚点复测、状态机、状态输出 |
-| `control/inc/ctrl_modulator.h` | 任意工作点控制所需的策略接口 |
-| `control/inc/ctrl_modulator_mzm.h` | MZM calibration / affine / DC 标定接口 |
-| `control/src/ctrl_bias.c` | coherent block 平均、EMA、PI、MIN/MAX outer trim |
-| `control/src/ctrl_modulator_mzm.c` | 相位向量恢复、DC-assisted QUAD `y` 轴、observer、锁定判据 |
+| `src/app/app_config.h` | 保存 calibration anchors、DC 标定和控制参数 |
+| `src/app/app_config.c` | 默认控制参数与 lock timeout |
+| `src/app/app_main.c` | 启动校准、锚点复测、状态机、状态输出 |
+| `src/control/ctrl_modulator.h` | 任意工作点控制所需的策略接口 |
+| `src/control/ctrl_modulator_mzm.h` | MZM calibration / affine / DC 标定接口 |
+| `src/control/ctrl_bias.c` | coherent block 平均、EMA、PI、MIN/MAX outer trim |
+| `src/control/ctrl_modulator_mzm.c` | 相位向量恢复、DC-assisted QUAD `y` 轴、observer、锁定判据 |
 
 ## 任务清单
 

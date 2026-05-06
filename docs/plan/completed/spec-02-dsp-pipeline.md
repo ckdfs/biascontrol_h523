@@ -20,9 +20,9 @@
 
 | File | Action |
 |------|--------|
-| `dsp/src/dsp_pilot_gen.c` | Implement pilot sine LUT generator |
-| `dsp/src/dsp_goertzel.c` | Implement block Goertzel for f0, 2f0 plus DC accumulation |
-| `dsp/inc/dsp_types.h` | Define harmonic_data_t if not already |
+| `src/dsp/dsp_pilot_gen.c` | Implement pilot sine LUT generator |
+| `src/dsp/dsp_goertzel.c` | Implement block Goertzel for f0, 2f0 plus DC accumulation |
+| `src/dsp/dsp_types.h` | Define harmonic_data_t if not already |
 | `test/test_goertzel.c` | Host-side unit test with synthetic data |
 | `cubemx/Core/Src/stm32h5xx_it.c` | Wire DRDY → SPI2 DMA → Goertzel → SPI1 DMA |
 

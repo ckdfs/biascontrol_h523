@@ -8,10 +8,10 @@
 
 | File | Action |
 |------|--------|
-| `app/src/app_main.c` | UART commands for PID tuning, `save` command |
-| `app/src/app_config.c` | Flash read/write implementation (`app_config_save/load`) |
-| `app/inc/app_config.h` | Flash storage layout, CRC field |
-| `control/src/ctrl_bias.c` | Optional streaming output hook |
+| `src/app/app_main.c` | UART commands for PID tuning, `save` command |
+| `src/app/app_config.c` | Flash read/write implementation (`app_config_save/load`) |
+| `src/app/app_config.h` | Flash storage layout, CRC field |
+| `src/control/ctrl_bias.c` | Optional streaming output hook |
 
 ## Task Checklist
 

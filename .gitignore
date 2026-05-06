@@ -31,6 +31,8 @@ cubemx/cmake/
 .DS_Store
 .settings/
 __pycache__/
+.cache/
+.claude/
 
 # Compiled objects
 *.o
