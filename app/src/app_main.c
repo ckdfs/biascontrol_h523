@@ -4,6 +4,7 @@
 #include "drv_dac8568.h"
 #include "drv_ads131m02.h"
 #include "dsp_goertzel.h"
+#include "dsp_pilot_gen.h"
 #include "dsp_types.h"
 #include "ctrl_modulator_mzm.h"
 #include <string.h>
@@ -1200,6 +1201,14 @@ static void state_selftest(void)
         return;
     }
 
+    /* Enable DAC DMA (spec-07).  Smoke test must pass — DMA failure
+     * means the SPI1 TxCplt chain is unreliable and the system enters FAULT. */
+    if (dac8568_enable_dma() != 0) {
+        printf("[app] FAULT: DAC DMA smoke test failed\r\n");
+        transition_to(APP_STATE_FAULT);
+        return;
+    }
+
     /* TODO: Selftest — write known DAC value, read back via ADC, verify */
 
     /* Blink LED to indicate successful init */
@@ -1343,6 +1352,14 @@ void app_run(void)
 
     /* Dispatch any pending UART command (must run in main-loop context, not ISR) */
     app_uart_process();
+
+    /* DAC DMA watchdog (spec-07): any timeout means the TxCplt chain broke. */
+    if (dac8568_dma_timeout_count() > 0) {
+        printf("[app] FAULT: DAC DMA timeout (%lu)\r\n",
+               dac8568_dma_timeout_count());
+        transition_to(APP_STATE_FAULT);
+        return;
+    }
 
     switch (ctx.state) {
     case APP_STATE_INIT:
@@ -1537,6 +1554,188 @@ void app_handle_command(const char *cmd)
         /* Set all 8 channels to 0 V output (mid-scale code 32768) */
         int ret = dac8568_write_channel(DAC8568_CH_ALL, 32768);
         printf("[dac] all channels -> 0.0 V, ret=%d\r\n", ret);
+    } else if (strncmp(cmd, "dac test", 8) == 0) {
+        /* "dac test <channels> <dc_v> [pilot_mv] [duration_s]"
+         *
+         * Output pilot tone on selected DAC channels with configurable amplitude.
+         * Polls DRDY for 64 kHz pacing; reads ADC to reset DRDY each cycle.
+         *
+         * channels: "A"–"H", comma/space-free combo like "AB" or "ACE",
+         *           or "ALL" / "*" for all 8 channels.
+         * dc_v:     DC bias in volts (-10 … +10).  Default 0.0.
+         * pilot_mv: pilot peak amplitude in mV (1 … 500).  Default 50.
+         * duration: test duration in seconds (0.5 … 30).  Default 3.
+         *
+         * Examples:
+         *   dac test A 0.0              →  CH_A, 0 V DC,  50 mV pilot, 3 s
+         *   dac test AB 1.0 100 5      →  CH_A+B, 1 V DC, 100 mV pilot, 5 s
+         *   dac test ALL 0.0 50        →  all 8 ch, 0 V DC, 50 mV pilot, 3 s */
+        char   ch_buf[16];
+        float  dc_v      = 0.0f;
+        float  pilot_mv  = ctx.config->pilot_amplitude_v * 1000.0f;
+        float  duration  = 3.0f;
+        char  *endptr    = NULL;
+        int    n_tokens  = 0;
+        uint8_t ch_list[8];
+        int    n_ch      = 0;
+
+        /* ── token 1: channel selector ── */
+        if (cmd[8] == ' ' && cmd[9] != '\0') {
+            const char *p = cmd + 9;
+            while (*p == ' ') p++;
+            const char *tok = p;
+            while (*p != ' ' && *p != '\0') p++;
+            int tok_len = (int)(p - tok);
+            if (tok_len > 0 && tok_len < (int)sizeof(ch_buf)) {
+                memcpy(ch_buf, tok, (size_t)tok_len);
+                ch_buf[tok_len] = '\0';
+                n_tokens++;
+                endptr = (char *)p;
+            }
+        }
+
+        /* ── token 2: dc voltage ── */
+        if (n_tokens >= 1 && endptr != NULL && *endptr != '\0') {
+            while (*endptr == ' ') endptr++;
+            if (*endptr != '\0') {
+                dc_v = strtof(endptr, &endptr);
+                n_tokens++;
+            }
+        }
+
+        /* ── token 3 (optional): pilot amplitude mV ── */
+        if (n_tokens >= 2 && endptr != NULL && *endptr != '\0') {
+            while (*endptr == ' ') endptr++;
+            if (*endptr != '\0' && *endptr != '-' && (*endptr < '0' || *endptr > '9')) {
+                /* non-numeric → skip, maybe it was part of the channels string */
+            } else if (*endptr != '\0') {
+                char *inner = NULL;
+                float v = strtof(endptr, &inner);
+                if (inner != endptr) {
+                    pilot_mv = v;
+                    endptr   = inner;
+                    n_tokens++;
+                }
+            }
+        }
+
+        /* ── token 4 (optional): duration seconds ── */
+        if (n_tokens >= 3 && endptr != NULL && *endptr != '\0') {
+            while (*endptr == ' ') endptr++;
+            if (*endptr != '\0') {
+                char *inner = NULL;
+                float v = strtof(endptr, &inner);
+                if (inner != endptr) {
+                    duration = v;
+                    n_tokens++;
+                }
+            }
+        }
+
+        /* ── clamp ── */
+        if (dc_v < -10.0f) dc_v = -10.0f;
+        if (dc_v >  10.0f) dc_v =  10.0f;
+        if (pilot_mv < 1.0f)    pilot_mv = 1.0f;
+        if (pilot_mv > 500.0f)  pilot_mv = 500.0f;
+        if (duration < 0.5f)    duration = 0.5f;
+        if (duration > 30.0f)   duration = 30.0f;
+
+        /* ── resolve channels ── */
+        if (n_tokens < 1 || ch_buf[0] == '\0') {
+            ch_list[0] = DAC8568_CH_A;
+            n_ch = 1;
+        } else if (strcmp(ch_buf, "ALL") == 0 || strcmp(ch_buf, "*") == 0) {
+            for (int i = 0; i < 8; i++) {
+                ch_list[i] = (uint8_t)i;   /* CH_A=0 … CH_H=7 */
+            }
+            n_ch = 8;
+        } else {
+            for (const char *c = ch_buf; *c != '\0'; c++) {
+                char letter = *c;
+                if (letter >= 'a' && letter <= 'h') letter = (char)(letter - 'a' + 'A');
+                if (letter >= 'A' && letter <= 'H' && n_ch < 8) {
+                    ch_list[n_ch++] = (uint8_t)(letter - 'A');  /* A→0, H→7 */
+                }
+            }
+            if (n_ch == 0) {
+                ch_list[0] = DAC8568_CH_A;
+                n_ch = 1;
+            }
+        }
+
+        uint32_t n_samples = (uint32_t)(duration * (float)DSP_SAMPLE_RATE_HZ);
+
+        pilot_gen_t pg;
+        pilot_gen_init(&pg, (float)DSP_PILOT_FREQ_HZ,
+                       (float)DSP_SAMPLE_RATE_HZ, pilot_mv * 0.001f);
+
+        printf("[dac] test start: ch=");
+        for (int ci = 0; ci < n_ch; ci++) {
+            printf("%c%s", (char)('A' + ch_list[ci]), (ci + 1 < n_ch) ? "," : "");
+        }
+        printf(" dc=%+.3f V pilot=%.0f mV f0=%.0f Hz"
+               " duration=%.1f s (%lu samples)\r\n",
+               (double)dc_v, (double)pilot_mv,
+               (double)DSP_PILOT_FREQ_HZ, (double)duration,
+               (unsigned long)n_samples);
+
+        float    min_dac_v = dc_v + pilot_mv * 0.001f;
+        float    max_dac_v = dc_v - pilot_mv * 0.001f;
+        uint32_t sent      = 0;
+
+        for (uint32_t i = 0; i < n_samples; i++) {
+            float pilot = pilot_gen_next(&pg);
+            float dac_v = dc_v + pilot;
+
+            for (int ci = 0; ci < n_ch; ci++) {
+                dac8568_set_voltage(ch_list[ci], dac_v);
+                /* Each channel fires a DMA transfer (~1.3 µs frame +
+                 * ~300 ns ISR to clear s_dma_inflight).  Spin until
+                 * completion so the next channel write (or the DRDY
+                 * poll in the next cycle) never sees inflight=1. */
+                uint32_t tw = HAL_GetTick();
+                while (dac8568_send_raw_is_inflight()) {
+                    if ((HAL_GetTick() - tw) > 1) break;
+                }
+            }
+
+            uint32_t t0 = HAL_GetTick();
+            while (board_adc_drdy_read() != 0) {
+                if ((HAL_GetTick() - t0) > 10) {
+                    printf("[dac] test ABORT: DRDY timeout after %lu samples\r\n",
+                           (unsigned long)sent);
+                    for (int ci = 0; ci < n_ch; ci++) {
+                        dac8568_set_voltage(ch_list[ci], dc_v);
+                        uint32_t tw = HAL_GetTick();
+                        while (dac8568_send_raw_is_inflight()) {
+                            if ((HAL_GetTick() - tw) > 1) break;
+                        }
+                    }
+                    goto cmd_done;
+                }
+            }
+
+            ads131m02_sample_t dummy;
+            (void)ads131m02_read_sample(&dummy);
+
+            if (dac_v < min_dac_v) min_dac_v = dac_v;
+            if (dac_v > max_dac_v) max_dac_v = dac_v;
+            sent++;
+        }
+
+        /* Restore DC level on all channels */
+        for (int ci = 0; ci < n_ch; ci++) {
+            dac8568_set_voltage(ch_list[ci], dc_v);
+            uint32_t tw = HAL_GetTick();
+            while (dac8568_send_raw_is_inflight()) {
+                if ((HAL_GetTick() - tw) > 1) break;
+            }
+        }
+
+        printf("[dac] test done: %lu samples sent, DAC range [%.3f, %.3f] V"
+               " (pk-pk=%.0f mV)\r\n",
+               (unsigned long)sent, (double)min_dac_v, (double)max_dac_v,
+               (double)((max_dac_v - min_dac_v) * 1000.0f));
     } else if (strncmp(cmd, "dac ", 4) == 0) {
         /* "dac <voltage>"  — set DAC channel A to specified voltage (-10..+10 V).
          * Used for hardware verification with a multimeter.

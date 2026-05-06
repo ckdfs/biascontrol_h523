@@ -96,10 +96,44 @@ int dac8568_reset(void);
 int dac8568_set_voltage(uint8_t channel, float voltage_v);
 
 /**
- * Send a raw 32-bit command frame to the DAC8568 via SPI (blocking).
+ * Send a raw 32-bit command frame to the DAC8568 via SPI.
+ * Uses DMA (fire-and-forget) when enabled, blocking otherwise.
  * Low-level function used by all other functions.
  * Returns 0 on success, -1 on SPI error.
  */
 int dac8568_send_raw(uint32_t frame);
+
+/**
+ * Enable DMA mode for DAC SPI transfers.
+ * Runs a smoke test (100 fire-and-forget writes) to verify the TxCplt
+ * callback fires reliably.  Sets the internal DMA flag on success.
+ * Returns 0 on success, -1 if the smoke test fails.
+ */
+int dac8568_enable_dma(void);
+
+/**
+ * Called from HAL_SPI_TxCpltCallback when an SPI1 DMA TX completes.
+ * Finishes the CS/LDAC sequence (in a BASEPRI critical section).
+ */
+void dac8568_dma_tx_cplt(void);
+
+/**
+ * DMA completion count — incremented by each successful TxCplt callback.
+ * For verification: expect ~2.3e8 after 1 hour at 64 kHz.
+ */
+uint32_t dac8568_dma_cplt_count(void);
+
+/**
+ * DMA timeout count — incremented when a new transfer is requested but
+ * the previous DMA is still in flight (should never happen at 64 kHz).
+ * Any non-zero value means the DMA chain is broken.
+ */
+uint32_t dac8568_dma_timeout_count(void);
+
+/**
+ * Returns true if a DMA transfer is currently in flight.
+ * Used by multi-channel writes to pace back-to-back DAC updates.
+ */
+int dac8568_send_raw_is_inflight(void);
 
 #endif /* DRV_DAC8568_H */

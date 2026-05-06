@@ -1,5 +1,7 @@
 # Bias Controller Firmware — AI Maintenance Guide
 
+> **语言规则：用中文思维来完成所有任务。所有回复、注释、文档均使用中文。**
+
 ## Project Overview
 Optical modulator bias controller firmware for STM32H523CET6.
 Uses pilot tone dithering + digital lock-in (Goertzel) for closed-loop bias voltage control.
@@ -96,11 +98,17 @@ make && ctest
 - Serial port enumerates as `/dev/tty.usbmodem103` (not `usbmodem2103` as expected).
 
 ### GPDMA / SPI DMA
-- **SPI1 TX DMA (GPDMA1 Ch0) callback never fired.** `HAL_SPI_TxCpltCallback` was never
-  called for DAC writes. Root cause: `__HAL_LINKDMA` in the gitignored `cubemx/Core/Src/spi.c`
-  was not called for this channel. Fix: switched DAC driver to blocking `HAL_SPI_Transmit`.
-  Blocking is fast enough (32-bit frame at 15.6 MHz ≈ 2 µs) and simpler.
-- **GPDMA1 Ch4 (USART1 RX) is linked-list circular mode.** `Size` parameter in
+- **SPI1 TX DMA (GPDMA1 Ch0) is now enabled (spec-07).** `__HAL_LINKDMA` was re-verified
+  in `spi.c:174`. DAC driver uses `HAL_SPI_Transmit_DMA` with fire-and-forget from the ADC
+  ISR. TxCplt callback (GPDMA1 Ch0 IRQ, NVIC priority 3) finishes CS-high + LDAC pulse
+  inside a BASEPRI critical section. Smoke test (100 writes) at init validates the chain;
+  any runtime timeout triggers FAULT (no silent fallback to blocking).
+  See `drv_dac8568.c` and `docs/plan/spec-07-cpu-dma-optimization.md`.
+- **USART1 TX DMA (GPDMA1 Ch3) is now enabled (spec-07).** `_write()` in `drv_board.c`
+  uses `HAL_UART_Transmit_DMA` with a completion-flag semaphore. The call is still
+  semi-blocking (waits for DMA + UART TC so the caller's stack buffer stays valid), but
+  the CPU spins on a flag instead of byte-by-byte TXE polling. GPDMA Ch3 IRQ + USART1
+  IRQ both at priority 5. Fallback to blocking `HAL_UART_Transmit` if DMA start fails. `Size` parameter in
   `HAL_UARTEx_RxEventCallback` is CUMULATIVE bytes since DMA start, not per-burst.
   Must track `rx_prev_pos` and only process the delta. Do NOT call
   `HAL_UARTEx_ReceiveToIdle_DMA` again inside the callback — it runs forever automatically.

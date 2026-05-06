@@ -16,31 +16,70 @@
  */
 
 /* ========================================================================= */
-/*  USART printf redirect — DMA TX                                           */
+/*  USART printf redirect — DMA TX (spec-07)                                  */
 /* ========================================================================= */
 
 /*
  * _write() — newlib/picolibc syscall backing printf().
  *
- * Blocking HAL_UART_Transmit is intentional here.  A DMA-based _write()
- * requires the UART TC interrupt chain (GPDMA TCF → UART TC → callback) to
- * fire reliably between every printf() call.  On STM32H5 GPDMA this chain
- * can stall (same root cause as the SPI1 DMA callback issue documented in
- * CLAUDE.md), causing subsequent writes to be silently discarded.
+ * Uses HAL_UART_Transmit_DMA with a completion flag.  The call is still
+ * semi-blocking (waits for DMA + UART TC before returning, since the caller's
+ * buffer may be stack-allocated), but the CPU spins on a flag instead of
+ * polling the UART TXE bit byte-by-byte inside HAL_UART_Transmit.
  *
- * Blocking TX is safe because the only latency-sensitive path (ADC sample
- * acquisition) now performs all its printf() calls *after* the full sample
- * burst is collected, never interleaved with DRDY polling.
+ * A static buffer holds the data while DMA is in flight.  GPDMA1 Ch3
+ * (priority 5) and USART1_IRQn (priority 5) are both enabled by CubeMX.
  */
+
+static volatile uint8_t uart_tx_done = 1;   /* 1 = idle, 0 = DMA in flight */
+static uint8_t          uart_tx_buf[256];   /* DMA-safe buffer; max Safe printf line */
+
 void board_uart_tx_cplt(void)
 {
-    /* No-op: retained so drv_callbacks.c compiles without change. */
+    uart_tx_done = 1;
 }
 
 int _write(int fd, char *ptr, int len)
 {
     (void)fd;
-    HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
+    if (len <= 0) return 0;
+
+    /* Clamp to buffer size */
+    if (len > (int)sizeof(uart_tx_buf)) {
+        len = (int)sizeof(uart_tx_buf);
+    }
+
+    /* Wait for previous DMA to complete (first call starts ready) */
+    uint32_t t0 = HAL_GetTick();
+    while (!uart_tx_done) {
+        if ((HAL_GetTick() - t0) > 1000) {   /* 1 s safety valve */
+            uart_tx_done = 1;
+            break;
+        }
+    }
+
+    /* Copy to DMA-safe buffer and fire */
+    uart_tx_done = 0;
+    memcpy(uart_tx_buf, ptr, (size_t)len);
+
+    HAL_StatusTypeDef st = HAL_UART_Transmit_DMA(&huart1, uart_tx_buf,
+                                                   (uint16_t)len);
+    if (st != HAL_OK) {
+        uart_tx_done = 1;
+        /* Graceful fallback: blocking TX for this write only */
+        HAL_UART_Transmit(&huart1, (uint8_t *)ptr, (uint16_t)len, HAL_MAX_DELAY);
+        return len;
+    }
+
+    /* Wait for DMA + UART TC (GPDMA Ch3 IRQ → HAL → UART TC → callback) */
+    t0 = HAL_GetTick();
+    while (!uart_tx_done) {
+        if ((HAL_GetTick() - t0) > 1000) {
+            uart_tx_done = 1;
+            break;
+        }
+    }
+
     return len;
 }
 
@@ -120,8 +159,8 @@ void board_dac_cs_high(void)
 void board_dac_ldac_pulse(void)
 {
     HAL_GPIO_WritePin(DAC_LDAC_GPIO_Port, DAC_LDAC_Pin, GPIO_PIN_RESET);
-    /* Brief delay — LDAC minimum pulse width is 20ns, a few NOPs suffice */
-    __asm volatile("nop\nnop\nnop\nnop");
+    /* DAC8568 LDAC min pulse = 20 ns. 8 NOPs @ 250 MHz ≈ 32 ns, safe margin. */
+    __asm volatile("nop\nnop\nnop\nnop\nnop\nnop\nnop\nnop");
     HAL_GPIO_WritePin(DAC_LDAC_GPIO_Port, DAC_LDAC_Pin, GPIO_PIN_SET);
 }
 

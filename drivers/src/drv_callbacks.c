@@ -5,16 +5,17 @@
  * as weak symbols.  Defining them here (in a tracked source file) overrides
  * the no-op stubs and routes each event to the appropriate driver.
  *
- * DAC8568 (SPI1) uses blocking HAL_SPI_Transmit — no TX-complete callback.
  * ADS131M02 (SPI2) uses DMA full-duplex — needs TX/RX-complete callback.
+ * DAC8568 (SPI1) uses DMA TX — needs TX-complete callback (spec-07).
  *
  * This file must NOT be placed inside cubemx/ (gitignored).
  */
 
 #include "drv_ads131m02.h"
 #include "drv_board.h"
+#include "drv_dac8568.h"
 #include "main.h"   /* ADC_DRDY_Pin macro from CubeMX */
-#include "spi.h"    /* hspi2 extern declaration */
+#include "spi.h"    /* hspi1, hspi2 extern declaration */
 #include "usart.h"  /* huart1 extern declaration */
 
 /* -------------------------------------------------------------------------
@@ -34,6 +35,16 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
     if (hspi == &hspi2) {
         HAL_SPI_TxRxCpltCallback_ADC(hspi);
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * SPI1 TX DMA complete (DAC8568) → finish CS/LDAC sequence (spec-07)
+ * ------------------------------------------------------------------------- */
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi == &hspi1) {
+        dac8568_dma_tx_cplt();
     }
 }
 

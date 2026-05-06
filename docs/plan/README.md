@@ -15,6 +15,7 @@
 | [spec-04-mzm-no-dc-5hz](spec-04-mzm-no-dc-5hz.md) | **COMPLETE** ✅ | 5 Hz dual-scan, all-target no-DC control — validated 2026-04-13 |
 | [spec-05-robustness](spec-05-robustness.md) | Pending | Robustness, tuning interface, parameter persistence |
 | [spec-06-multi-modulator](spec-06-multi-modulator.md) | Future | DDMZM, DPMZM, DPQPSK, PM support |
+| [spec-07-cpu-dma-optimization](spec-07-cpu-dma-optimization.md) | **COMPLETE** ✅ | DAC SPI1 DMA, USART1 TX DMA, main-loop WFI, dac test command |
 
 ## Key Technical Parameters
 
