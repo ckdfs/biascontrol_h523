@@ -7,19 +7,7 @@ build-arm/
 test/test_goertzel
 test/test_pid
 
-# CubeMX generated (keep .ioc for reproducibility, ignore generated code)
-cubemx/Core/
-cubemx/Drivers/
-cubemx/Middlewares/
-cubemx/startup_*.s
-cubemx/STM32H523xx_FLASH.ld
-cubemx/STM32H523xx_RAM.ld
-cubemx/.mxproject
-cubemx/*.xml
-cubemx/Makefile
-cubemx/CMakeLists.txt
-cubemx/CMakePresets.json
-cubemx/cmake/
+# CubeMX project file (tracked; regenerate via CubeMX, do NOT manually edit)
 
 # IDE files
 .vscode/
